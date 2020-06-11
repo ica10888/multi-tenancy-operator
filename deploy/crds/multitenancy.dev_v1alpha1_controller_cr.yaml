@@ -1,0 +1,7 @@
+apiVersion: multitenancy.dev/v1alpha1
+kind: Controller
+metadata:
+  name: example-controller
+spec:
+  # Add fields here
+  size: 3
