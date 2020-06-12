@@ -3,5 +3,24 @@ kind: Controller
 metadata:
   name: example-controller
 spec:
-  # Add fields here
-  size: 3
+  tenancies:
+    - namespace: foo
+      charts:
+        - chartName: mysql
+          settings:
+            - key: image
+              value: mysql/mysql:v5.7.0
+            - key: spec.username
+              value: root
+            - key: spec.password
+              value: root
+        - chartName: kafka
+          settings:
+            - key: kafka.image
+              value: kafka/kafka:v1.1
+    - namespace: bar
+      charts:
+        - chartName: kafka
+          settings:
+            - key: kafka.image
+              value: kafka/kafka:v2.0

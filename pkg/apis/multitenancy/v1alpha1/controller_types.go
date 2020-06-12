@@ -12,6 +12,7 @@ type ControllerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+	Tenancies []Tenancy `json:"tenancies"`
 }
 
 // ControllerStatus defines the observed state of Controller
@@ -19,6 +20,7 @@ type ControllerStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+	Updated []Tenancy `json:"updated"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -46,3 +48,19 @@ type ControllerList struct {
 func init() {
 	SchemeBuilder.Register(&Controller{}, &ControllerList{})
 }
+
+type Tenancy struct {
+	Namespace string `json:"namespace"`
+	Charts []Chart `json:"charts"`
+}
+
+type Chart struct {
+	ChartName string `json:"chartName"`
+	Settings []Setting `json:"settings"`
+}
+
+type Setting struct {
+	Key string `json:"key"`
+	Value string `json:"value"`
+}
+
