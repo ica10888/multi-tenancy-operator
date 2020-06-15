@@ -14,6 +14,32 @@ import (
 
 var log = logf.Log.WithName("controller_multi_tenancy")
 
+type TenancyOpreator string
+
+const (
+	UPDATE TenancyOpreator = "update"
+	CREATE TenancyOpreator = "create"
+	DELETE TenancyOpreator = "delete"
+)
+
+type NamespacedChart struct {
+	Namespace string
+	ChartName string
+}
+type NamespacedController struct {
+	Namespace string
+	ControllerName string
+}
+
+type TenancyExample struct {
+	TenancyOpreator TenancyOpreator
+	NamespacedChart NamespacedChart
+	NamespacedController NamespacedController
+	Settings []v1alpha1.Setting
+}
+
+var TenancyQueue chan TenancyExample
+
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
 * business logic.  Delete these comments after modifying this file.*
@@ -75,17 +101,41 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
-	tenancies :=flatMapTenancies(multiTenancyController.Spec.Tenancies)
+	ten := flatMapTenancies(multiTenancyController.Spec.Tenancies)
 
-	staTnancies:= flatMapTenancies(multiTenancyController.Status.Updated)
+	staTen := flatMapTenancies(multiTenancyController.Status.Updated)
 
-	for namespacedChart, settings := range tenancies {
-		staSettings := staTnancies[namespacedChart]
-		if staSettings == nil {
-			//create
+	for namespacedChart, _ := range staTen {
+		sets := ten[namespacedChart]
+		if sets == nil {
+			delete := TenancyExample {
+				TenancyOpreator: DELETE,
+				NamespacedChart: namespacedChart,
+				NamespacedController:NamespacedController{request.Namespace,request.Name},
+				Settings: sets,
+			}
+			TenancyQueue <- delete
+		}
+	}
+	for namespacedChart, sets := range ten {
+		staSets := staTen[namespacedChart]
+		if staSets == nil {
+			create := TenancyExample {
+				TenancyOpreator: CREATE,
+				NamespacedChart: namespacedChart,
+				NamespacedController:NamespacedController{request.Namespace,request.Name},
+				Settings: sets,
+			}
+			TenancyQueue <- create
 		} else {
-			if( ! (len(settings) == len(staSettings)   )){
-				//update
+			if ! equal(sets,staSets) {
+				update := TenancyExample {
+					TenancyOpreator: UPDATE,
+					NamespacedChart: namespacedChart,
+					NamespacedController:NamespacedController{request.Namespace,request.Name},
+					Settings: sets,
+				}
+				TenancyQueue <- update
 			}
 		}
 	}
@@ -93,4 +143,23 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 	return reconcile.Result{}, nil
 }
 
+func LoopSchedule(tenancyManager TenancyManager){
+	go func(){
+		for {
+			tenancyExample := <- TenancyQueue
+			switch tenancyExample.TenancyOpreator {
+			case UPDATE:
+				err := tenancyManager.UpdateSingleTenancyByConfigure(&tenancyExample)
+				ScheduleLogger(&tenancyExample,err)
+			case CREATE:
+				err := tenancyManager.CreateSingleTenancyByConfigure(&tenancyExample)
+				ScheduleLogger(&tenancyExample,err)
+			case DELETE:
+				err := tenancyManager.DeleteSingleTenancyByConfigure(&tenancyExample)
+				ScheduleLogger(&tenancyExample,err)
+			}
+		}
+	}()
+
+}
 

@@ -52,12 +52,31 @@ func checkMultiTenancyController(c client.Client, reqLogger logr.Logger, request
 }
 
 
-func flatMapTenancies(tenancies []v1alpha1.Tenancy) (res map[string][]v1alpha1.Setting) {
+func flatMapTenancies(tenancies []v1alpha1.Tenancy) (res map[NamespacedChart][]v1alpha1.Setting) {
 	for _, tenancy := range tenancies {
 		namespace := tenancy.Namespace
 		for _, chart := range tenancy.Charts {
-			res[namespace + "/" + chart.ChartName] = chart.Settings
+			res[NamespacedChart{namespace,chart.ChartName}] = chart.Settings
 		}
 	}
 	return res
+}
+
+func equal(s1,s2 []v1alpha1.Setting) bool{
+	if !(len(s1) == len(s2)) {
+		return false
+	}
+	for i, s := range s1 {
+		if s != s2[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func ScheduleLogger(t *TenancyExample,err error){
+	if err != nil {
+		reqLogger := log.WithValues("Namespace", t.NamespacedController.Namespace, "Name", t.NamespacedController.ControllerName)
+		reqLogger.Error(err,"Tenancy %s failed, reason: " ,t.TenancyOpreator)
+	}
 }

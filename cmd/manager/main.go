@@ -92,7 +92,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Set default manager options
+	// Set default tenancymanager options
 	options := manager.Options{
 		Namespace:          namespace,
 		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
@@ -107,7 +107,7 @@ func main() {
 		options.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(namespace, ","))
 	}
 
-	// Create a new manager to provide shared dependencies and start components
+	// Create a new tenancymanager to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, options)
 	if err != nil {
 		log.Error(err, "")
