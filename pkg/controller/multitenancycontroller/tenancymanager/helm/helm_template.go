@@ -80,7 +80,7 @@ type templateCmd struct {
 func Template(repo string, releaseName string, outputDir string, showNotes bool) (res string,err error) {
 	templateCmd := templateCmd{
 		"",
-		[]string{ path.Join(repo,"/values.yaml") },
+		[]string{ path.Join(repo,"values.yaml") },
 		repo,
 		[]string{},
 		[]string{},
