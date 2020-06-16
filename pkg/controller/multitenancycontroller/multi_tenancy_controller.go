@@ -1,6 +1,7 @@
 package multitenancycontroller
 
 import (
+	"fmt"
 	"github.com/ica10888/multi-tenancy-operator/pkg/apis/multitenancy/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -14,12 +15,12 @@ import (
 
 var log = logf.Log.WithName("controller_multi_tenancy")
 
-type TenancyOpreator string
+type TenancyOperator string
 
 const (
-	UPDATE TenancyOpreator = "update"
-	CREATE TenancyOpreator = "create"
-	DELETE TenancyOpreator = "delete"
+	UPDATE TenancyOperator = "update"
+	CREATE TenancyOperator = "create"
+	DELETE TenancyOperator = "delete"
 )
 
 type NamespacedChart struct {
@@ -32,7 +33,7 @@ type NamespacedController struct {
 }
 
 type TenancyExample struct {
-	TenancyOpreator TenancyOpreator
+	TenancyOperator TenancyOperator
 	NamespacedChart NamespacedChart
 	NamespacedController NamespacedController
 	Settings []v1alpha1.Setting
@@ -109,7 +110,7 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 		sets := ten[namespacedChart]
 		if sets == nil {
 			delete := TenancyExample {
-				TenancyOpreator: DELETE,
+				TenancyOperator: DELETE,
 				NamespacedChart: namespacedChart,
 				NamespacedController:NamespacedController{request.Namespace,request.Name},
 				Settings: sets,
@@ -121,7 +122,7 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 		staSets := staTen[namespacedChart]
 		if staSets == nil {
 			create := TenancyExample {
-				TenancyOpreator: CREATE,
+				TenancyOperator: CREATE,
 				NamespacedChart: namespacedChart,
 				NamespacedController:NamespacedController{request.Namespace,request.Name},
 				Settings: sets,
@@ -130,7 +131,7 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 		} else {
 			if ! equal(sets,staSets) {
 				update := TenancyExample {
-					TenancyOpreator: UPDATE,
+					TenancyOperator: UPDATE,
 					NamespacedChart: namespacedChart,
 					NamespacedController:NamespacedController{request.Namespace,request.Name},
 					Settings: sets,
@@ -143,23 +144,33 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 	return reconcile.Result{}, nil
 }
 
+//FIFO work queue
 func LoopSchedule(tenancyManager TenancyManager){
 	go func(){
 		for {
 			tenancyExample := <- TenancyQueue
-			switch tenancyExample.TenancyOpreator {
+			switch tenancyExample.TenancyOperator {
 			case UPDATE:
-				err := tenancyManager.UpdateSingleTenancyByConfigure(&tenancyExample)
-				ScheduleLogger(&tenancyExample,err)
+				ScheduleProcessor(tenancyManager.UpdateSingleTenancyByConfigure,&tenancyExample)
 			case CREATE:
-				err := tenancyManager.CreateSingleTenancyByConfigure(&tenancyExample)
-				ScheduleLogger(&tenancyExample,err)
+				ScheduleProcessor(tenancyManager.CreateSingleTenancyByConfigure,&tenancyExample)
 			case DELETE:
-				err := tenancyManager.DeleteSingleTenancyByConfigure(&tenancyExample)
-				ScheduleLogger(&tenancyExample,err)
+				ScheduleProcessor(tenancyManager.DeleteSingleTenancyByConfigure,&tenancyExample)
 			}
 		}
 	}()
 
 }
 
+func ScheduleProcessor(operatorSingleTenancyByConfigure func (*TenancyExample) error,t *TenancyExample){
+	reqLogger := log.WithValues("Namespace", t.NamespacedController.Namespace, "Name", t.NamespacedController.ControllerName)
+	defer func(){
+		if err := recover(); err != nil {
+			reqLogger.Error(fmt.Errorf("%s",err),"recover Err: ")
+		}
+	}()
+	err := operatorSingleTenancyByConfigure(t)
+	if err != nil {
+		reqLogger.Error(err,"Tenancy %s failed, reason: " ,t.TenancyOperator)
+	}
+}

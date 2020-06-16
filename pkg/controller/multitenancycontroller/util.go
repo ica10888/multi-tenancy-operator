@@ -73,10 +73,3 @@ func equal(s1,s2 []v1alpha1.Setting) bool{
 	}
 	return true
 }
-
-func ScheduleLogger(t *TenancyExample,err error){
-	if err != nil {
-		reqLogger := log.WithValues("Namespace", t.NamespacedController.Namespace, "Name", t.NamespacedController.ControllerName)
-		reqLogger.Error(err,"Tenancy %s failed, reason: " ,t.TenancyOpreator)
-	}
-}
