@@ -7,6 +7,7 @@ require (
 	github.com/cenkalti/backoff v0.0.0-20181003080854-62661b46c409
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-logr/logr v0.1.0
+	github.com/golang/protobuf v1.3.2
 	github.com/operator-framework/operator-sdk v0.17.1
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/pflag v1.0.5

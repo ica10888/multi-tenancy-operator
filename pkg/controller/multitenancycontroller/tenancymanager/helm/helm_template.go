@@ -19,19 +19,16 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/manifest"
 	"k8s.io/helm/pkg/proto/hapi/chart"
+	"k8s.io/helm/pkg/renderutil"
 	"k8s.io/helm/pkg/strvals"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
-
-	"k8s.io/helm/pkg/chartutil"
-	"k8s.io/helm/pkg/manifest"
-
-	"k8s.io/helm/pkg/renderutil"
-	"k8s.io/helm/pkg/tiller"
 
 	"github.com/ghodss/yaml"
 )
@@ -42,7 +39,7 @@ var (
 	whitespaceRegex = regexp.MustCompile(`^\s*$`)
 
 	// defaultKubeVersion is the default value of --kube-version flag
-	defaultKubeVersion = fmt.Sprintf("%s.%s", chartutil.DefaultKubeVersion.Major, chartutil.DefaultKubeVersion.Minor)
+	defaultKubeVersion = ""
 )
 
 const templateDesc = `
@@ -80,10 +77,10 @@ type templateCmd struct {
 
 
 
-func Template(repo string, releaseName string, outputDir string, showNotes bool) error {
-	Tplc := templateCmd{
+func Template(repo string, releaseName string, outputDir string, showNotes bool) (res string,err error) {
+	templateCmd := templateCmd{
 		"",
-		[]string{repo + "/values.yaml"},
+		[]string{ path.Join(repo,"/values.yaml") },
 		repo,
 		[]string{},
 		[]string{},
@@ -96,35 +93,31 @@ func Template(repo string, releaseName string, outputDir string, showNotes bool)
 		outputDir,
 	}
 	var args = []string{repo}
-	err := Tplc.Run(args)
-	if err != nil {
-		return err
-	}
-	return nil
+	return templateCmd.Run(args)
 
 }
 
 
 
 
-func (t *templateCmd) Run( args []string) error {
+func (t *templateCmd) Run( args []string) (res string,err error) {
 	if len(args) < 1 {
-		return errors.New("chart is required")
+		return res,errors.New("chart is required")
 	}
 	// verify chart path exists
 	if _, err := os.Stat(args[0]); err == nil {
 		if t.chartPath, err = filepath.Abs(args[0]); err != nil {
-			return err
+			return res,err
 		}
 	} else {
-		return err
+		return res,err
 	}
 
 	// verify that output-dir exists if provided
 	if t.outputDir != "" {
 		_, err := os.Stat(t.outputDir)
 		if os.IsNotExist(err) {
-			return fmt.Errorf("output-dir '%s' does not exist", t.outputDir)
+			return res,fmt.Errorf("output-dir '%s' does not exist", t.outputDir)
 		}
 	}
 
@@ -134,23 +127,16 @@ func (t *templateCmd) Run( args []string) error {
 	// get combined values and create config
 	rawVals, err := vals(t.valueFiles, t.values, t.stringValues, t.fileValues, "", "", "")
 	if err != nil {
-		return err
+		return res,err
 	}
+
 	config := &chart.Config{Raw: string(rawVals), Values: map[string]*chart.Value{}}
-	/*
-		// If template is specified, try to run the template.
-		if t.nameTemplate != "" {
-			t.releaseName, err = generateName(t.nameTemplate)
-			if err != nil {
-				return err
-			}
-		}*/
 
 
 	// Check chart requirements to make sure all dependencies are present in /charts
 	c, err := chartutil.Load(t.chartPath)
 	if err != nil {
-		return err
+		return res,err
 	}
 
 	renderOpts := renderutil.Options{
@@ -166,7 +152,7 @@ func (t *templateCmd) Run( args []string) error {
 
 	renderedTemplates, err := renderutil.Render(c, config, renderOpts)
 	if err != nil {
-		return err
+		return res,err
 	}
 
 	listManifests := manifest.SplitManifests(renderedTemplates)
@@ -180,7 +166,7 @@ func (t *templateCmd) Run( args []string) error {
 			if !filepath.IsAbs(f) {
 				newF, err := filepath.Abs(filepath.Join(t.chartPath, f))
 				if err != nil {
-					return fmt.Errorf("could not turn template path %s into absolute path: %s", f, err)
+					return res,fmt.Errorf("could not turn template path %s into absolute path: %s", f, err)
 				}
 				f = newF
 			}
@@ -202,7 +188,7 @@ func (t *templateCmd) Run( args []string) error {
 				}
 			}
 			if missing {
-				return fmt.Errorf("could not find template %s in chart", f)
+				return res,fmt.Errorf("could not find template %s in chart", f)
 			}
 		}
 	} else {
@@ -210,7 +196,7 @@ func (t *templateCmd) Run( args []string) error {
 		manifestsToRender = listManifests
 	}
 
-	for _, m := range tiller.SortByKind(manifestsToRender) {
+	for _, m := range manifestsToRender {
 		data := m.Content
 		b := filepath.Base(m.Name)
 		if !t.showNotes && b == "NOTES.txt" {
@@ -227,14 +213,17 @@ func (t *templateCmd) Run( args []string) error {
 			}
 			err = writeToFile(t.outputDir, m.Name, data)
 			if err != nil {
-				return err
+				return res,err
 			}
 			continue
 		}
-		fmt.Printf("---\n# Source: %s\n", m.Name)
-		fmt.Println(data)
+		res += fmt.Sprintf("---\n# Source: %s\n", m.Name)
+		res += data
 	}
-	return nil
+
+
+
+	return res,nil
 }
 
 // write the <data> to <output-dir>/<name>
