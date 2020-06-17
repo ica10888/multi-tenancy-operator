@@ -77,13 +77,13 @@ type templateCmd struct {
 
 
 
-func Template(repo string, releaseName string, outputDir string, showNotes bool) (res string,err error) {
+func Template(repo string, releaseName string, outputDir string, showNotes bool,stringValues []string) (res string,err error) {
 	templateCmd := templateCmd{
 		"",
 		[]string{ path.Join(repo,"values.yaml") },
 		repo,
 		[]string{},
-		[]string{},
+		stringValues,
 		[]string{},
 		showNotes,
 		releaseName,
@@ -217,7 +217,7 @@ func (t *templateCmd) Run( args []string) (res string,err error) {
 			}
 			continue
 		}
-		res += fmt.Sprintf("---\n# Source: %s\n", m.Name)
+		res += fmt.Sprintf("\n---\n# Source: %s\n", m.Name)
 		res += data
 	}
 

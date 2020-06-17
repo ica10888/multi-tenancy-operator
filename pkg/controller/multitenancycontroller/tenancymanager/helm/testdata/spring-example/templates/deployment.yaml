@@ -50,3 +50,6 @@ spec:
 {{- if .Values.extraVolumes }}
 {{ toYaml .Values.extraVolumes | indent 6 }}
 {{- end }}
+{{- if .Values.terminationGracePeriodSeconds.enabled }}
+      terminationGracePeriodSeconds: 60
+  {{- end }}

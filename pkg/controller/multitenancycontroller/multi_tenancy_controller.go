@@ -33,6 +33,7 @@ type NamespacedController struct {
 }
 
 type TenancyExample struct {
+	Reconcile *ReconcileMultiTenancyController
 	TenancyOperator TenancyOperator
 	NamespacedChart NamespacedChart
 	NamespacedController NamespacedController
@@ -52,7 +53,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileMultiTenancyController{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileMultiTenancyController{Client: mgr.GetClient(), Scheme: mgr.GetScheme()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -83,8 +84,8 @@ type ReconcileMultiTenancyController struct {
 	// TODO: Clarify the split client
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	Client client.Client
+	Scheme *runtime.Scheme
 }
 
 
@@ -95,9 +96,8 @@ type ReconcileMultiTenancyController struct {
 func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling multiTenancyController")
-	
 	// Fetch the multiTenancyController instance
-	multiTenancyController,err := checkMultiTenancyController(r.client,reqLogger ,request)
+	multiTenancyController,err := checkMultiTenancyController(r.Client,reqLogger ,request)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -110,6 +110,7 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 		sets := ten[namespacedChart]
 		if sets == nil {
 			delete := TenancyExample {
+				Reconcile: r,
 				TenancyOperator: DELETE,
 				NamespacedChart: namespacedChart,
 				NamespacedController:NamespacedController{request.Namespace,request.Name},
@@ -122,6 +123,7 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 		staSets := staTen[namespacedChart]
 		if staSets == nil {
 			create := TenancyExample {
+				Reconcile: r,
 				TenancyOperator: CREATE,
 				NamespacedChart: namespacedChart,
 				NamespacedController:NamespacedController{request.Namespace,request.Name},
@@ -131,6 +133,7 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 		} else {
 			if ! equal(sets,staSets) {
 				update := TenancyExample {
+					Reconcile: r,
 					TenancyOperator: UPDATE,
 					NamespacedChart: namespacedChart,
 					NamespacedController:NamespacedController{request.Namespace,request.Name},

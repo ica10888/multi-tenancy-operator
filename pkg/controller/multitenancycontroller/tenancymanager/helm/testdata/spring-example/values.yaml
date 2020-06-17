@@ -21,8 +21,12 @@ resources:
     requestscpu: 50m
     requestsmemory: 512Mi
 
-# extraVolumes:
-# extraVolumeMounts:
+extraVolumes: {}
+extraVolumeMounts: {}
+
+
+terminationGracePeriodSeconds:
+  enabled: false
 
 podAnnotations:
   prometheus.io/scrape: "true"
