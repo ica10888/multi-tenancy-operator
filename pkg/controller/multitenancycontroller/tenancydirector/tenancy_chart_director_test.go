@@ -1,4 +1,4 @@
-package tenancymanager
+package tenancydirector
 
 import (
 	"strings"
@@ -46,40 +46,43 @@ spec:
 func TestDeserializer(t *testing.T) {
 	type args struct {
 		data string
+		namespace string
 	}
 	tests := []struct {
 		name     string
 		args     args
-		wantObjsLen int
+		wantObjs []Kubeapi
 		wantErr  bool
 	}{
 		{
-			name: "single-test",
-			args:     args{deployment},
-			wantObjsLen: 1,
+			name: "single-namespaced-test",
+			args:     args{deployment,"dev"},
+			wantObjs: []Kubeapi{{"extensions/v1beta1","Deployment","spring-example","dev"}},
 			wantErr:  false,
 		},
 		{
 			name: "plural-test",
-			args:     args{service + deployment},
-			wantObjsLen: 2,
+			args:     args{service + deployment,""},
+			wantObjs: []Kubeapi{{"v1","Service","spring-boot-demo",""},{"extensions/v1beta1","Deployment","spring-example",""}},
 			wantErr:  false,
 		},
 		{
 			name: "error-type-test",
-			args:     args{strings.ReplaceAll(deployment,"name: spring-example","name: true")},
+			args:     args{strings.ReplaceAll(deployment,"name: spring-example","name: true"),""},
 			wantErr:  true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotObjs, err := Deserializer(tt.args.data)
+			gotObjs, err := Deserializer(tt.args.data,tt.args.namespace)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Deserializer() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if len(gotObjs) != tt.wantObjsLen  {
-				t.Errorf("Deserializer() gotObjs = %v, want %v", gotObjs, tt.wantObjsLen)
+			for  i := 0 ;i < len(gotObjs) ;i++ {
+				if gotObjs[i].Kubeapi != tt.wantObjs[i] {
+					t.Errorf("Deserializer() gotObjs = %v, want %v", gotObjs, tt.wantObjs)
+				}
 			}
 		})
 	}
