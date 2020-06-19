@@ -52,7 +52,12 @@ func checkMultiTenancyController(c client.Client, reqLogger logr.Logger, request
 }
 
 
-func flatMapTenancies(tenancies []v1alpha1.Tenancy) (res map[NamespacedChart][]v1alpha1.Setting) {
+
+func flatMapUpdatedTenancies(tenancies []v1alpha1.StatusTenancy) (map[NamespacedChart][]v1alpha1.Setting) {
+	res := make(map[NamespacedChart][]v1alpha1.Setting)
+	if tenancies == nil {
+		return res
+	}
 	for _, tenancy := range tenancies {
 		namespace := tenancy.Namespace
 		for _, chart := range tenancy.Charts {
@@ -61,6 +66,26 @@ func flatMapTenancies(tenancies []v1alpha1.Tenancy) (res map[NamespacedChart][]v
 	}
 	return res
 }
+
+
+
+
+
+
+func flatMapTenancies(tenancies []v1alpha1.Tenancy) (map[NamespacedChart][]v1alpha1.Setting) {
+	res := make(map[NamespacedChart][]v1alpha1.Setting)
+	if tenancies == nil {
+		return res
+	}
+	for _, tenancy := range tenancies {
+		namespace := tenancy.Namespace
+		for _, chart := range tenancy.Charts {
+			res[NamespacedChart{namespace,chart.ChartName}] = chart.Settings
+		}
+	}
+	return res
+}
+
 
 func equal(s1,s2 []v1alpha1.Setting) bool{
 	if !(len(s1) == len(s2)) {

@@ -16,10 +16,10 @@ spec:
       containers:
         - name: multi-tenancy-operator
           # Replace this with the built image name
-          image: REPLACE_IMAGE
+          image: ica10888/multi-tenancy-operator:dev
           command:
           - multi-tenancy-operator
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           env:
             - name: WATCH_NAMESPACE
               valueFrom:

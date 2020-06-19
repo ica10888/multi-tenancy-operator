@@ -1,6 +1,7 @@
 package multitenancycontroller
 
 import (
+	"context"
 	"fmt"
 	"github.com/ica10888/multi-tenancy-operator/pkg/apis/multitenancy/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -40,7 +41,7 @@ type TenancyExample struct {
 	Settings []v1alpha1.Setting
 }
 
-var TenancyQueue chan TenancyExample
+var TenancyQueue = make(chan TenancyExample)
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -96,15 +97,27 @@ type ReconcileMultiTenancyController struct {
 func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling multiTenancyController")
+
+	defer func(){
+		if err := recover(); err != nil {
+			reqLogger.Error(fmt.Errorf("%s",err),"recover Err: ")
+		}
+	}()
+
 	// Fetch the multiTenancyController instance
 	multiTenancyController,err := checkMultiTenancyController(r.Client,reqLogger ,request)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
+	if multiTenancyController.InitCheck() {
+		r.Client.Update(context.TODO(),multiTenancyController)
+		return reconcile.Result{},nil
+	}
+
 	ten := flatMapTenancies(multiTenancyController.Spec.Tenancies)
 
-	staTen := flatMapTenancies(multiTenancyController.Status.Updated)
+	staTen := flatMapUpdatedTenancies(multiTenancyController.Status.UpdatedTenancies)
 
 	for namespacedChart, _ := range staTen {
 		sets := ten[namespacedChart]
@@ -117,6 +130,7 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 				Settings: sets,
 			}
 			TenancyQueue <- delete
+			multiTenancyController.Status.RemoveNamespacedChart(namespacedChart.ChartName,namespacedChart.Namespace)
 		}
 	}
 	for namespacedChart, sets := range ten {
@@ -130,6 +144,7 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 				Settings: sets,
 			}
 			TenancyQueue <- create
+			multiTenancyController.Status.RemoveNamespacedChart(namespacedChart.ChartName,namespacedChart.Namespace)
 		} else {
 			if ! equal(sets,staSets) {
 				update := TenancyExample {
@@ -144,21 +159,23 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 		}
 	}
 
+	r.Client.Update(context.TODO(),multiTenancyController)
+
 	return reconcile.Result{}, nil
 }
 
 //FIFO work queue
-func LoopSchedule(tenancyManager TenancyManager){
+func LoopSchedule(tenancyDirector TenancyDirector){
 	go func(){
 		for {
 			tenancyExample := <- TenancyQueue
 			switch tenancyExample.TenancyOperator {
 			case UPDATE:
-				ScheduleProcessor(tenancyManager.UpdateSingleTenancyByConfigure,&tenancyExample)
+				ScheduleProcessor(tenancyDirector.UpdateSingleTenancyByConfigure,&tenancyExample)
 			case CREATE:
-				ScheduleProcessor(tenancyManager.CreateSingleTenancyByConfigure,&tenancyExample)
+				ScheduleProcessor(tenancyDirector.CreateSingleTenancyByConfigure,&tenancyExample)
 			case DELETE:
-				ScheduleProcessor(tenancyManager.DeleteSingleTenancyByConfigure,&tenancyExample)
+				ScheduleProcessor(tenancyDirector.DeleteSingleTenancyByConfigure,&tenancyExample)
 			}
 		}
 	}()

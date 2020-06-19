@@ -19,7 +19,7 @@ type ChartDirector struct {
 	ChartHome string
 }
 
-func ChartDirectorFor() ChartDirector{
+func ChartDirectorFor() ChartDirector {
 	chartHome := os.Getenv("CHART_HOME")
 	if chartHome == ""{
 		chartHome = "/root/chart"
@@ -29,10 +29,11 @@ func ChartDirectorFor() ChartDirector{
 	}
 }
 
-func (a *ChartDirector) CreateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) error {
+func (a ChartDirector) CreateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) error {
 	repo := path.Join(a.ChartHome,t.NamespacedChart.ChartName)
 	data,err :=helm.Template(repo,t.NamespacedChart.Namespace,"",false,SettingToStringValues(t.Settings))
 	if err != nil {
+		log.Error(err,"Helm Template Error")
 		return err
 	}
 	//TODO create namespace
@@ -41,17 +42,18 @@ func (a *ChartDirector) CreateSingleTenancyByConfigure(t *multitenancycontroller
 	return nil
 }
 
-func (a *ChartDirector) UpdateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) error {
+func (a ChartDirector) UpdateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) error {
 	repo := path.Join(a.ChartHome,t.NamespacedChart.ChartName)
 	data,err :=helm.Template(repo,t.NamespacedChart.Namespace,"",false,SettingToStringValues(t.Settings))
 	if err != nil {
+		log.Error(err,"Helm Template Error")
 		return err
 	}
 	createOrUpdate(t,data)
 	return nil
 }
 
-func (a *ChartDirector) DeleteSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) error {
+func (a ChartDirector) DeleteSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) error {
 
 	panic("implement me")
 }
@@ -78,10 +80,10 @@ func createOrUpdate(t *multitenancycontroller.TenancyExample, data string) (objs
 
 		if err != nil {
 			errs = append(errs, err)
-			log.Error(err,"%s %s %s failed in %s",obj.Kubeapi.Kind,obj.Kubeapi.Name,t.TenancyOperator,t.NamespacedChart.Namespace)
+			log.Error(err,"%s %v %s failed in %s",obj.Kubeapi.Kind,obj.Kubeapi.Name,t.TenancyOperator,t.NamespacedChart.Namespace)
 		} else {
 			succObjs = append(succObjs, obj)
-			log.Info("%s %s %s success in %s",obj.Kubeapi.Kind,obj.Kubeapi.Name,t.TenancyOperator,t.NamespacedChart.Namespace)
+			log.Info("%s %v %s success in %s",obj.Kubeapi.Kind,obj.Kubeapi.Name,t.TenancyOperator,t.NamespacedChart.Namespace)
 		}
 
 	}

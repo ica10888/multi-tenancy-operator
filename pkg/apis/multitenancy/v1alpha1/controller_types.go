@@ -20,7 +20,7 @@ type ControllerStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	Updated []StatusTenancy `json:"updated"`
+	UpdatedTenancies []StatusTenancy `json:"updatedTenancies"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -66,12 +66,82 @@ type Setting struct {
 
 
 type StatusTenancy struct {
-	Namespace string `json:"namespace"`
-	Charts []Chart `json:"charts"`
-	PodStatusList []PodStatusList `json:"podStatusList"`
+	Tenancy
+	ReplicationControllerStatusList []ReplicationControllerStatus  `json:"replicationControllerStatus"`
+	PodStatusList []PodStatus `json:"podStatus"`
 }
 
-type PodStatusList struct {
+type PodStatus struct {
 	PodName string `json:"podName"`
 	Phase string `json:"phase"`
+}
+
+type ReplicationControllerStatus struct {
+	ReplicationControllerName string `json:"replicationControllerName"`
+	ApiVersion string `json:"apiVersion"`
+	Ready string `json:"ready"`
+}
+
+func (c *Controller) InitCheck() bool{
+	res := false
+	if c.Spec.Tenancies == nil {
+		c.Spec.Tenancies = []Tenancy{}
+		res = true
+	}
+	if c.Status.UpdatedTenancies == nil {
+		c.Status.UpdatedTenancies = []StatusTenancy{}
+		res = true
+	}
+	return res
+}
+
+
+func (ut *ControllerStatus) AppendNamespacedChart(chartName,namespace string){
+	var t *StatusTenancy
+	namespaceInited := false
+	chartInited := false
+	for _, tenancy := range ut.UpdatedTenancies {
+		if tenancy.Namespace == namespace {
+			t = &tenancy
+			namespaceInited = true
+			break
+		}
+	}
+	if ! namespaceInited {
+		t = &StatusTenancy{}
+	}
+	if t.Charts == nil {
+		t.Charts = []Chart{}
+	}
+	for _, chart := range t.Charts {
+		if chart.ChartName == chartName {
+			chartInited = true
+			break
+		}
+	}
+	if ! chartInited {
+		t.Charts = append(t.Charts,Chart{namespace,[]Setting{}})
+	}
+}
+
+func (ut *ControllerStatus) RemoveNamespacedChart(chartName,namespace string) {
+	var t *StatusTenancy
+	namespaceInited := false
+	for _, tenancy := range ut.UpdatedTenancies {
+		if tenancy.Namespace == namespace {
+			t = &tenancy
+			namespaceInited = true
+			break
+		}
+	}
+	if (! namespaceInited) || t.Charts == nil {
+		return
+	}
+	for i, chart := range t.Charts {
+		if chart.ChartName == chartName {
+			newCharts := append(t.Charts[:i],t.Charts[i+1:]...)
+			t.Charts = newCharts
+			return
+		}
+	}
 }
