@@ -1,6 +1,7 @@
 package tenancydirector
 
 import (
+	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller"
 	"strings"
 	"testing"
 )
@@ -51,19 +52,19 @@ func TestDeserializer(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     args
-		wantObjs []Kubeapi
+		wantObjs []multitenancycontroller.Kubeapi
 		wantErr  bool
 	}{
 		{
 			name: "single-namespaced-test",
 			args:     args{deployment,"dev"},
-			wantObjs: []Kubeapi{{"extensions/v1beta1","Deployment","spring-example","dev"}},
+			wantObjs: []multitenancycontroller.Kubeapi{{"extensions/v1beta1","Deployment","spring-example","dev"}},
 			wantErr:  false,
 		},
 		{
 			name: "plural-test",
 			args:     args{service + deployment,""},
-			wantObjs: []Kubeapi{{"v1","Service","spring-boot-demo",""},{"extensions/v1beta1","Deployment","spring-example",""}},
+			wantObjs: []multitenancycontroller.Kubeapi{{"v1","Service","spring-boot-demo",""},{"extensions/v1beta1","Deployment","spring-example",""}},
 			wantErr:  false,
 		},
 		{

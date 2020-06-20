@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"strings"
 )
 var log = logf.Log.WithName("tenancy_manager")
@@ -30,39 +31,37 @@ func ChartDirectorFor() ChartDirector {
 	}
 }
 
-func (a ChartDirector) CreateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) error {
+func (a ChartDirector) CreateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
 	repo := path.Join(a.ChartHome,t.NamespacedChart.ChartName)
 	data,err :=helm.Template(repo,t.NamespacedChart.Namespace,"",false,SettingToStringValues(t.Settings))
 	if err != nil {
 		log.Error(err,"Helm Template Error")
-		return err
+		return nil,err
 	}
 	//TODO create namespace
 
-	createOrUpdate(t,data)
-	return nil
+	return applyOrUpdate(t,data)
 }
 
-func (a ChartDirector) UpdateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) error {
+func (a ChartDirector) UpdateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
 	repo := path.Join(a.ChartHome,t.NamespacedChart.ChartName)
 	data,err :=helm.Template(repo,t.NamespacedChart.Namespace,"",false,SettingToStringValues(t.Settings))
 	if err != nil {
 		log.Error(err,"Helm Template Error")
-		return err
+		return nil,err
 	}
-	createOrUpdate(t,data)
-	return nil
+	return applyOrUpdate(t,data)
 }
 
-func (a ChartDirector) DeleteSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) error {
+func (a ChartDirector) DeleteSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
 
 	panic("implement me")
 }
 
 
 
-func createOrUpdate(t *multitenancycontroller.TenancyExample, data string) (objs []KubeObject, err error) {
-	var succObjs []KubeObject
+func applyOrUpdate(t *multitenancycontroller.TenancyExample, data string) (objs []multitenancycontroller.KubeObject, err error) {
+	var succObjs []multitenancycontroller.KubeObject
 	objs,err = Deserializer(data,t.NamespacedChart.Namespace)
 	if err != nil {
 		return nil, err
@@ -75,6 +74,9 @@ func createOrUpdate(t *multitenancycontroller.TenancyExample, data string) (objs
 		switch t.TenancyOperator {
 		case multitenancycontroller.CREATE:
 			err = t.Reconcile.Client.Create(context.TODO(),obj.Object)
+			if apierrs.IsAlreadyExists(err) {
+				err = t.Reconcile.Client.Update(context.TODO(),obj.Object)
+			}
 		case multitenancycontroller.UPDATE:
 			err = t.Reconcile.Client.Update(context.TODO(),obj.Object)
 		}
@@ -96,7 +98,7 @@ func createOrUpdate(t *multitenancycontroller.TenancyExample, data string) (objs
 
 
 
-func Deserializer(data string,namespace string) (objs []KubeObject,err error) {
+func Deserializer(data string,namespace string) (objs []multitenancycontroller.KubeObject,err error) {
 	var checkDatas []string
 	datas := strings.Split(data, "---")
 	for _, s := range datas {
@@ -114,13 +116,13 @@ func Deserializer(data string,namespace string) (objs []KubeObject,err error) {
 		if err != nil {
 			return objs, err
 		}
-		objs = append(objs, KubeObject{kapi,obj})
+		objs = append(objs, multitenancycontroller.KubeObject{kapi,obj})
 	}
 	return
 }
 
 
-func serializerWithNamespace(s string,namespace string)(res []byte ,kapi Kubeapi ,err error){
+func serializerWithNamespace(s string,namespace string)(res []byte ,kapi multitenancycontroller.Kubeapi ,err error){
 	json, err :=yaml.YAMLToJSON([]byte(s))
 	if err != nil {
 		return

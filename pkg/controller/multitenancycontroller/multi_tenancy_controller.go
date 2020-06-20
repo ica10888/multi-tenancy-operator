@@ -51,7 +51,7 @@ type TenancyExample struct {
 	TenancyOperator TenancyOperator
 	NamespacedChart NamespacedChart
 	NamespacedController NamespacedController
-	Settings []v1alpha1.Setting
+	Settings map[string]string
 }
 
 var TenancyQueue = make(chan TenancyExample)
@@ -201,7 +201,7 @@ func LoopSchedule(tenancyDirector TenancyDirector){
 
 }
 
-func ScheduleProcessor(operatorSingleTenancyByConfigure func (*TenancyExample) error,t *TenancyExample){
+func ScheduleProcessor(operatorSingleTenancyByConfigure func (*TenancyExample) ([]KubeObject,error),t *TenancyExample){
 	reqLogger := log.WithValues("Namespace", t.NamespacedController.Namespace, "Name", t.NamespacedController.ControllerName)
 	defer func(){
 		if err := recover(); err != nil {
@@ -209,7 +209,7 @@ func ScheduleProcessor(operatorSingleTenancyByConfigure func (*TenancyExample) e
 		}
 	}()
 	reqLogger.Info(fmt.Sprintf("Start to %s",t.TenancyOperator.ToString()))
-	err := operatorSingleTenancyByConfigure(t)
+	_ ,err := operatorSingleTenancyByConfigure(t)
 	if err != nil {
 		reqLogger.Error(err,fmt.Sprintf("Tenancy %s failed, reason: " ,t.TenancyOperator.ToString()))
 	}

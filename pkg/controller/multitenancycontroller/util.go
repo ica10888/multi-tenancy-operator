@@ -53,15 +53,15 @@ func checkMultiTenancyController(c client.Client, reqLogger logr.Logger, request
 
 
 
-func flatMapUpdatedTenancies(tenancies []v1alpha1.StatusTenancy) (map[NamespacedChart][]v1alpha1.Setting) {
-	res := make(map[NamespacedChart][]v1alpha1.Setting)
+func flatMapUpdatedTenancies(tenancies []v1alpha1.StatusTenancy) (map[NamespacedChart](map[string]string)) {
+	res := make(map[NamespacedChart](map[string]string))
 	if tenancies == nil {
 		return res
 	}
 	for _, tenancy := range tenancies {
 		namespace := tenancy.Namespace
-		for _, chart := range tenancy.Charts {
-			res[NamespacedChart{namespace,chart.ChartName}] = chart.Settings
+		for _, chart := range tenancy.ChartMessages {
+			res[NamespacedChart{namespace,chart.ChartName}] = chart.SettingMap
 		}
 	}
 	return res
@@ -72,27 +72,31 @@ func flatMapUpdatedTenancies(tenancies []v1alpha1.StatusTenancy) (map[Namespaced
 
 
 
-func flatMapTenancies(tenancies []v1alpha1.Tenancy) (map[NamespacedChart][]v1alpha1.Setting) {
-	res := make(map[NamespacedChart][]v1alpha1.Setting)
+func flatMapTenancies(tenancies []v1alpha1.Tenancy) (map[NamespacedChart](map[string]string)) {
+	res := make(map[NamespacedChart](map[string]string))
 	if tenancies == nil {
 		return res
 	}
 	for _, tenancy := range tenancies {
 		namespace := tenancy.Namespace
 		for _, chart := range tenancy.Charts {
-			res[NamespacedChart{namespace,chart.ChartName}] = chart.Settings
+			sets := make(map[string]string)
+			for _, set := range chart.Settings {
+				sets[set.Key] = set.Value
+			}
+			res[NamespacedChart{namespace,chart.ChartName}] = sets
 		}
 	}
 	return res
 }
 
 
-func equal(s1,s2 []v1alpha1.Setting) bool{
+func equal(s1,s2 map[string]string) bool{
 	if !(len(s1) == len(s2)) {
 		return false
 	}
-	for i, s := range s1 {
-		if s != s2[i] {
+	for _, s := range s1 {
+		if s1[s] != s2[s] {
 			return false
 		}
 	}
