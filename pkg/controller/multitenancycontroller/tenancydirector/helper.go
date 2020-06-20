@@ -10,7 +10,9 @@ import (
 
 func SettingToStringValues(sets map[string]string) (strs []string){
 	for k, v := range sets {
-		strs = append(strs, k + "=" + v)
+		if k != ""{
+			strs = append(strs, k + "=" + v)
+		}
 	}
 	return
 }

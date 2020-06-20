@@ -103,13 +103,13 @@ func (c *Controller) InitCheck() bool{
 }
 
 
-func (ut *ControllerStatus) AppendNamespacedChart(chartName,namespace string){
+func (cs *ControllerStatus) AppendNamespacedChart(chartName,namespace string){
 	newUpdatedTenancies := []StatusTenancy{}
 	chartMessages := []ChartMessage{}
 	rcList := []ReplicationControllerStatus{}
 	podList := []PodStatus{}
 	index := -1
-	for i, tenancy := range ut.UpdatedTenancies {
+	for i, tenancy := range cs.UpdatedTenancies {
 		if tenancy.Namespace == namespace {
 			chartMessages = tenancy.ChartMessages
 			rcList = tenancy.ReplicationControllerStatusList
@@ -126,25 +126,25 @@ func (ut *ControllerStatus) AppendNamespacedChart(chartName,namespace string){
 		podList,
 	}
 	if index == -1 {
-		newUpdatedTenancies = append(ut.UpdatedTenancies, st)
+		newUpdatedTenancies = append(cs.UpdatedTenancies, st)
 	} else {
-		newUpdatedTenancies = append(append(ut.UpdatedTenancies[:index], st), ut.UpdatedTenancies[index+1:]...)
+		newUpdatedTenancies = append(append(cs.UpdatedTenancies[:index], st), cs.UpdatedTenancies[index+1:]...)
 	}
 
-	ut.UpdatedTenancies = newUpdatedTenancies
+	cs.UpdatedTenancies = newUpdatedTenancies
 
 }
 
 
 
 
-func (ut *ControllerStatus) RemoveNamespacedChart(chartName,namespace string) {
+func (cs *ControllerStatus) RemoveNamespacedChart(chartName,namespace string) {
 	newUpdatedTenancies := []StatusTenancy{}
 	rcList := []ReplicationControllerStatus{}
 	podList := []PodStatus{}
 	st := StatusTenancy{}
 	index := -1
-	for i, tenancy := range ut.UpdatedTenancies {
+	for i, tenancy := range cs.UpdatedTenancies {
 		if tenancy.Namespace == namespace {
 			for j, chartMessage := range tenancy.ChartMessages {
 				if chartMessage.ChartName == chartName {
@@ -165,9 +165,53 @@ func (ut *ControllerStatus) RemoveNamespacedChart(chartName,namespace string) {
 		}
 	}
 	if len(st.ChartMessages) == 0 {
-		newUpdatedTenancies = append(ut.UpdatedTenancies[:index],ut.UpdatedTenancies[index+1:]...)
+		newUpdatedTenancies = append(cs.UpdatedTenancies[:index],cs.UpdatedTenancies[index+1:]...)
 	} else {
-		newUpdatedTenancies = append(append(ut.UpdatedTenancies[:index], st), ut.UpdatedTenancies[index+1:]...)
+		newUpdatedTenancies = append(append(cs.UpdatedTenancies[:index], st), cs.UpdatedTenancies[index+1:]...)
 	}
-	ut.UpdatedTenancies = newUpdatedTenancies
+	cs.UpdatedTenancies = newUpdatedTenancies
+}
+
+func (cs *ControllerStatus) UpdateNamespacedChartSettings(chartName,namespace string,sets map[string]string){
+	needUpdate := false
+	if sets == nil || namespace == "" {
+		return
+	}
+	newUpdatedTenancies := []StatusTenancy{}
+	newTenancy := StatusTenancy{}
+	newMessage := ChartMessage{}
+	tenancyCopy := StatusTenancy{}
+	index := -1
+	jndex := -1
+	for i, tenancy := range cs.UpdatedTenancies {
+		if tenancy.Namespace == namespace {
+			for j, message := range tenancy.ChartMessages {
+				if message.ChartName == chartName {
+					newMessage = ChartMessage{
+						message.ChartName,
+						sets,
+						message.ErrorMessage,
+					}
+					index = i
+					jndex = j
+					needUpdate = true
+					tenancyCopy = tenancy
+					break
+				}
+			}
+			break
+		}
+	}
+	if needUpdate {
+			charts := tenancyCopy.ChartMessages
+			newTenancy = StatusTenancy{
+				tenancyCopy.Namespace,
+				append(append(charts[:jndex], newMessage), charts[jndex+1:]...),
+				tenancyCopy.ReplicationControllerStatusList,
+				tenancyCopy.PodStatusList,
+			}
+			newUpdatedTenancies = append(append(cs.UpdatedTenancies[:index], newTenancy), cs.UpdatedTenancies[index+1:]...)
+		cs.UpdatedTenancies = newUpdatedTenancies
+	}
+
 }

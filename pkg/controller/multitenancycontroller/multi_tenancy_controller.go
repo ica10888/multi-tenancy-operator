@@ -147,7 +147,7 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 				Settings: sets,
 			}
 			multiTenancyController.Status.RemoveNamespacedChart(namespacedChart.ChartName,namespacedChart.Namespace)
-			r.Client.Status().Update(context.TODO(),multiTenancyController)
+			multiTenancyController.Status.UpdateNamespacedChartSettings(namespacedChart.ChartName,namespacedChart.Namespace,sets)
 			TenancyQueue <- delete
 
 		}
@@ -163,7 +163,6 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 				Settings: sets,
 			}
 			multiTenancyController.Status.AppendNamespacedChart(namespacedChart.ChartName,namespacedChart.Namespace)
-			r.Client.Status().Update(context.TODO(),multiTenancyController)
 			TenancyQueue <- create
 		} else {
 			if ! equal(sets,staSets) {
@@ -174,12 +173,12 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 					NamespacedController:NamespacedController{request.Namespace,request.Name},
 					Settings: sets,
 				}
-				r.Client.Status().Update(context.TODO(),multiTenancyController)
+				multiTenancyController.Status.UpdateNamespacedChartSettings(namespacedChart.ChartName,namespacedChart.Namespace,sets)
 				TenancyQueue <- update
 			}
 		}
 	}
-
+	r.Client.Status().Update(context.TODO(),multiTenancyController)
 	return reconcile.Result{}, nil
 }
 

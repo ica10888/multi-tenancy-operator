@@ -6,12 +6,12 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller"
 	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller/tenancydirector/helm"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes/scheme"
 	"os"
 	"path"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"strings"
 )
 var log = logf.Log.WithName("tenancy_manager")
@@ -75,6 +75,7 @@ func applyOrUpdate(t *multitenancycontroller.TenancyExample, data string) (objs 
 		case multitenancycontroller.CREATE:
 			err = t.Reconcile.Client.Create(context.TODO(),obj.Object)
 			if apierrs.IsAlreadyExists(err) {
+				log.Info("Is already exists, try to update")
 				err = t.Reconcile.Client.Update(context.TODO(),obj.Object)
 			}
 		case multitenancycontroller.UPDATE:
