@@ -2,28 +2,11 @@ package tenancydirector
 
 import (
 	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller"
+	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 	"testing"
 )
-
-
-var service = `
----
-# Source: spring-example/templates/service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: spring-boot-demo
-spec:
-  type: ClusterIP
-  ports:
-  - port: 8761
-    targetPort: 8761
-    protocol: TCP
-    name: http-port
-  selector:
-    app: spring-example
-`
 
 var deployment = `
 ---
@@ -52,19 +35,13 @@ func TestDeserializer(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     args
-		wantObjs []multitenancycontroller.Kubeapi
+		wantObj multitenancycontroller.Kubeapi
 		wantErr  bool
 	}{
 		{
 			name: "single-namespaced-test",
 			args:     args{deployment,"dev"},
-			wantObjs: []multitenancycontroller.Kubeapi{{"extensions/v1beta1","Deployment","spring-example","dev"}},
-			wantErr:  false,
-		},
-		{
-			name: "plural-test",
-			args:     args{service + deployment,""},
-			wantObjs: []multitenancycontroller.Kubeapi{{"v1","Service","spring-boot-demo",""},{"extensions/v1beta1","Deployment","spring-example",""}},
+			wantObj:  multitenancycontroller.Kubeapi{"extensions/v1beta1","Deployment","spring-example","dev"},
 			wantErr:  false,
 		},
 		{
@@ -75,15 +52,15 @@ func TestDeserializer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotObjs, err := Deserializer(tt.args.data,tt.args.namespace)
+			config := rest.Config{}
+			c,_ := client.New(&config,client.Options{})
+			gotObjs, err := Deserializer(c,tt.args.data,tt.args.namespace,false)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Deserializer() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			for  i := 0 ;i < len(gotObjs) ;i++ {
-				if gotObjs[i].Kubeapi != tt.wantObjs[i] {
-					t.Errorf("Deserializer() gotObjs = %v, want %v", gotObjs, tt.wantObjs)
-				}
+			if gotObjs.Kubeapi != tt.wantObj {
+				t.Errorf("Deserializer() gotObjs = %v, want %v", gotObjs, tt.wantObj)
 			}
 		})
 	}

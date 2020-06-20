@@ -95,9 +95,9 @@ func equal(s1,s2 map[string]string) bool{
 	if !(len(s1) == len(s2)) {
 		return false
 	}
-	for k, s := range s1 {
+	for k, _ := range s1 {
 		if k != ""{
-			if s1[s] != s2[s] {
+			if s1[k] != s2[k] {
 				return false
 			}
 		}
