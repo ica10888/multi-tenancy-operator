@@ -2,6 +2,7 @@ package tenancydirector
 
 import (
 	"context"
+	"fmt"
 	"github.com/ghodss/yaml"
 	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller"
 	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller/tenancydirector/helm"
@@ -80,10 +81,10 @@ func createOrUpdate(t *multitenancycontroller.TenancyExample, data string) (objs
 
 		if err != nil {
 			errs = append(errs, err)
-			log.Error(err,"%s %v %s failed in %s",obj.Kubeapi.Kind,obj.Kubeapi.Name,t.TenancyOperator,t.NamespacedChart.Namespace)
+			log.Error(err,fmt.Sprintf("%s %s %s failed in %s",obj.Kubeapi.Kind,obj.Kubeapi.Name,t.TenancyOperator.ToString(),t.NamespacedChart.Namespace))
 		} else {
 			succObjs = append(succObjs, obj)
-			log.Info("%s %v %s success in %s",obj.Kubeapi.Kind,obj.Kubeapi.Name,t.TenancyOperator,t.NamespacedChart.Namespace)
+			log.Info(fmt.Sprintf("%s %s %s success in %s",obj.Kubeapi.Kind,obj.Kubeapi.Name,t.TenancyOperator.ToString(),t.NamespacedChart.Namespace))
 		}
 
 	}

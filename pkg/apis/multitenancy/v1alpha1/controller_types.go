@@ -66,7 +66,8 @@ type Setting struct {
 
 
 type StatusTenancy struct {
-	Tenancy
+	Namespace string `json:"namespace"`
+	ChartNames []string `json:"chartNames"`
 	ReplicationControllerStatusList []ReplicationControllerStatus  `json:"replicationControllerStatus"`
 	PodStatusList []PodStatus `json:"podStatus"`
 }
@@ -97,51 +98,70 @@ func (c *Controller) InitCheck() bool{
 
 
 func (ut *ControllerStatus) AppendNamespacedChart(chartName,namespace string){
-	var t *StatusTenancy
-	namespaceInited := false
-	chartInited := false
-	for _, tenancy := range ut.UpdatedTenancies {
+	newUpdatedTenancies := []StatusTenancy{}
+	chartNames := []string{}
+	rcList := []ReplicationControllerStatus{}
+	podList := []PodStatus{}
+	index := -1
+	for i, tenancy := range ut.UpdatedTenancies {
 		if tenancy.Namespace == namespace {
-			t = &tenancy
-			namespaceInited = true
+			chartNames = tenancy.ChartNames
+			rcList = tenancy.ReplicationControllerStatusList
+			podList = tenancy.PodStatusList
+			index = i
 			break
 		}
 	}
-	if ! namespaceInited {
-		t = &StatusTenancy{}
+	newChartNames := append(chartNames,chartName)
+	st := StatusTenancy{
+		namespace,
+		newChartNames,
+		rcList,
+		podList,
 	}
-	if t.Charts == nil {
-		t.Charts = []Chart{}
+	if index == -1 {
+		newUpdatedTenancies = append(ut.UpdatedTenancies, st)
+	} else {
+		newUpdatedTenancies = append(append(ut.UpdatedTenancies[:index], st), ut.UpdatedTenancies[index+1:]...)
 	}
-	for _, chart := range t.Charts {
-		if chart.ChartName == chartName {
-			chartInited = true
-			break
-		}
-	}
-	if ! chartInited {
-		t.Charts = append(t.Charts,Chart{namespace,[]Setting{}})
-	}
+
+	ut.UpdatedTenancies = newUpdatedTenancies
+
 }
 
+
+
+
 func (ut *ControllerStatus) RemoveNamespacedChart(chartName,namespace string) {
-	var t *StatusTenancy
-	namespaceInited := false
-	for _, tenancy := range ut.UpdatedTenancies {
+	newUpdatedTenancies := []StatusTenancy{}
+	rcList := []ReplicationControllerStatus{}
+	podList := []PodStatus{}
+	st := StatusTenancy{}
+	index := -1
+	for i, tenancy := range ut.UpdatedTenancies {
 		if tenancy.Namespace == namespace {
-			t = &tenancy
-			namespaceInited = true
+			for j, name := range tenancy.ChartNames {
+				if name == chartName {
+					rcList = tenancy.ReplicationControllerStatusList
+					podList = tenancy.PodStatusList
+					newChartNames := append(tenancy.ChartNames[:j],tenancy.ChartNames[j+1:]...)
+					st = StatusTenancy{
+						namespace,
+						newChartNames,
+						rcList,
+						podList,
+					}
+					break
+				}
+			}
+			index = i
 			break
 		}
 	}
-	if (! namespaceInited) || t.Charts == nil {
-		return
+	if len(st.ChartNames) == 0 {
+		newUpdatedTenancies = append(ut.UpdatedTenancies[:index],ut.UpdatedTenancies[index+1:]...)
+	} else {
+		newUpdatedTenancies = append(append(ut.UpdatedTenancies[:index], st), ut.UpdatedTenancies[index+1:]...)
 	}
-	for i, chart := range t.Charts {
-		if chart.ChartName == chartName {
-			newCharts := append(t.Charts[:i],t.Charts[i+1:]...)
-			t.Charts = newCharts
-			return
-		}
-	}
+	ut.UpdatedTenancies = newUpdatedTenancies
 }

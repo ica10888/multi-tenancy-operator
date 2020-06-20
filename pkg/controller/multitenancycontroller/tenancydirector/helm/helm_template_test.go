@@ -18,6 +18,9 @@ metadata:
     chart: spring-example-dev
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: spring-example
   strategy:
     rollingUpdate:
       maxSurge: 15%

@@ -18,6 +18,19 @@ var log = logf.Log.WithName("controller_multi_tenancy")
 
 type TenancyOperator string
 
+func (t TenancyOperator) ToString() string{
+	res := ""
+	switch t {
+	case UPDATE:
+		res = "update"
+	case CREATE:
+		res = "create"
+	case DELETE:
+		res = "delete"
+	}
+	return res
+}
+
 const (
 	UPDATE TenancyOperator = "update"
 	CREATE TenancyOperator = "create"
@@ -107,13 +120,17 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 	// Fetch the multiTenancyController instance
 	multiTenancyController,err := checkMultiTenancyController(r.Client,reqLogger ,request)
 	if err != nil {
+		reqLogger.Error(err,"Check Err: ")
 		return reconcile.Result{}, err
 	}
 
 	if multiTenancyController.InitCheck() {
 		r.Client.Update(context.TODO(),multiTenancyController)
+		r.Client.Status().Update(context.TODO(),multiTenancyController)
+		reqLogger.Info("Init check failed, init multiTenancyController")
 		return reconcile.Result{},nil
 	}
+
 
 	ten := flatMapTenancies(multiTenancyController.Spec.Tenancies)
 
@@ -129,8 +146,10 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 				NamespacedController:NamespacedController{request.Namespace,request.Name},
 				Settings: sets,
 			}
-			TenancyQueue <- delete
 			multiTenancyController.Status.RemoveNamespacedChart(namespacedChart.ChartName,namespacedChart.Namespace)
+			r.Client.Status().Update(context.TODO(),multiTenancyController)
+			TenancyQueue <- delete
+
 		}
 	}
 	for namespacedChart, sets := range ten {
@@ -143,8 +162,9 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 				NamespacedController:NamespacedController{request.Namespace,request.Name},
 				Settings: sets,
 			}
+			multiTenancyController.Status.AppendNamespacedChart(namespacedChart.ChartName,namespacedChart.Namespace)
+			r.Client.Status().Update(context.TODO(),multiTenancyController)
 			TenancyQueue <- create
-			multiTenancyController.Status.RemoveNamespacedChart(namespacedChart.ChartName,namespacedChart.Namespace)
 		} else {
 			if ! equal(sets,staSets) {
 				update := TenancyExample {
@@ -154,12 +174,11 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 					NamespacedController:NamespacedController{request.Namespace,request.Name},
 					Settings: sets,
 				}
+				r.Client.Status().Update(context.TODO(),multiTenancyController)
 				TenancyQueue <- update
 			}
 		}
 	}
-
-	r.Client.Update(context.TODO(),multiTenancyController)
 
 	return reconcile.Result{}, nil
 }
@@ -189,8 +208,9 @@ func ScheduleProcessor(operatorSingleTenancyByConfigure func (*TenancyExample) e
 			reqLogger.Error(fmt.Errorf("%s",err),"recover Err: ")
 		}
 	}()
+	reqLogger.Info(fmt.Sprintf("Start to %s",t.TenancyOperator.ToString()))
 	err := operatorSingleTenancyByConfigure(t)
 	if err != nil {
-		reqLogger.Error(err,"Tenancy %s failed, reason: " ,t.TenancyOperator)
+		reqLogger.Error(err,fmt.Sprintf("Tenancy %s failed, reason: " ,t.TenancyOperator.ToString()))
 	}
 }
