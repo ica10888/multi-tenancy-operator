@@ -67,9 +67,14 @@ type Setting struct {
 
 type StatusTenancy struct {
 	Namespace string `json:"namespace"`
-	ChartNames []string `json:"chartNames"`
+	ChartMessages []ChartMessage `json:"chartMessages"`
 	ReplicationControllerStatusList []ReplicationControllerStatus  `json:"replicationControllerStatus"`
 	PodStatusList []PodStatus `json:"podStatus"`
+}
+
+type ChartMessage struct {
+	ChartName string `json:"chartName"`
+	ErrorMessage string `json:"errorMessage"`
 }
 
 type PodStatus struct {
@@ -99,23 +104,23 @@ func (c *Controller) InitCheck() bool{
 
 func (ut *ControllerStatus) AppendNamespacedChart(chartName,namespace string){
 	newUpdatedTenancies := []StatusTenancy{}
-	chartNames := []string{}
+	chartMessages := []ChartMessage{}
 	rcList := []ReplicationControllerStatus{}
 	podList := []PodStatus{}
 	index := -1
 	for i, tenancy := range ut.UpdatedTenancies {
 		if tenancy.Namespace == namespace {
-			chartNames = tenancy.ChartNames
+			chartMessages = tenancy.ChartMessages
 			rcList = tenancy.ReplicationControllerStatusList
 			podList = tenancy.PodStatusList
 			index = i
 			break
 		}
 	}
-	newChartNames := append(chartNames,chartName)
+	newChartMessages := append(chartMessages,ChartMessage{chartName,""})
 	st := StatusTenancy{
 		namespace,
-		newChartNames,
+		newChartMessages,
 		rcList,
 		podList,
 	}
@@ -140,11 +145,11 @@ func (ut *ControllerStatus) RemoveNamespacedChart(chartName,namespace string) {
 	index := -1
 	for i, tenancy := range ut.UpdatedTenancies {
 		if tenancy.Namespace == namespace {
-			for j, name := range tenancy.ChartNames {
-				if name == chartName {
+			for j, chartMessage := range tenancy.ChartMessages {
+				if chartMessage.ChartName == chartName {
 					rcList = tenancy.ReplicationControllerStatusList
 					podList = tenancy.PodStatusList
-					newChartNames := append(tenancy.ChartNames[:j],tenancy.ChartNames[j+1:]...)
+					newChartNames := append(tenancy.ChartMessages[:j],tenancy.ChartMessages[j+1:]...)
 					st = StatusTenancy{
 						namespace,
 						newChartNames,
@@ -158,7 +163,7 @@ func (ut *ControllerStatus) RemoveNamespacedChart(chartName,namespace string) {
 			break
 		}
 	}
-	if len(st.ChartNames) == 0 {
+	if len(st.ChartMessages) == 0 {
 		newUpdatedTenancies = append(ut.UpdatedTenancies[:index],ut.UpdatedTenancies[index+1:]...)
 	} else {
 		newUpdatedTenancies = append(append(ut.UpdatedTenancies[:index], st), ut.UpdatedTenancies[index+1:]...)

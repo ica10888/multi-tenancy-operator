@@ -32,14 +32,14 @@ func TestControllerStatus(t *testing.T) {
 			fields{[]StatusTenancy{}},
 			[]args{{"kafka","dev"},{"mysql","dev"}},
 			[]args{{"kafka","dev"}},
-			"[{dev [mysql] [] []}]",
+			"[{dev [{mysql }] [] []}]",
 		},
 		{
 			"with-lists-test",
 			fields{[]StatusTenancy{
 				{
 					"dev",
-					[]string{"mysql"},
+					[]ChartMessage{{"mysql","mysqlErr"}},
 					[]ReplicationControllerStatus{{"mysql","Deployment","1/1"}},
 					[]PodStatus{{"mysql-0","Running"}},
 				},
@@ -47,14 +47,14 @@ func TestControllerStatus(t *testing.T) {
 			},
 			[]args{{"kafka","dev"}},
 			[]args{{"kafka","dev"}},
-			"[{dev [mysql] [{mysql Deployment 1/1}] [{mysql-0 Running}]}]",
+			"[{dev [{mysql mysqlErr}] [{mysql Deployment 1/1}] [{mysql-0 Running}]}]",
 		},
 		{
 			"more-namespaces-test",
 			fields{[]StatusTenancy{}},
 			[]args{{"kafka","dev"},{"mysql","dev"},{"redis","test"}},
 			[]args{{"kafka","dev"}},
-			"[{dev [mysql] [] []} {test [redis] [] []}]",
+			"[{dev [{mysql }] [] []} {test [{redis }] [] []}]",
 		},
 	}
 	for _, tt := range tests {
