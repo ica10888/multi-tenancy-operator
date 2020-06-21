@@ -17,7 +17,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"strings"
 )
-var log = logf.Log.WithName("tenancy_manager")
+var log = logf.Log.WithName("tenancy_director")
 
 
 type ChartDirector struct {
@@ -164,19 +164,24 @@ func serializerWithNamespaceAndResourceVersionIfNeed(c client.Client,s,namespace
 }
 
 func GetResourceVersionForUpdate(c client.Client,obj *unstructured.Unstructured) (res string, err error){
-	deep := obj.DeepCopyObject()
-	err = c.Get(context.TODO(),types.NamespacedName{obj.GetNamespace(),obj.GetName()},deep)
+	err = c.Get(context.TODO(),types.NamespacedName{obj.GetNamespace(),obj.GetName()},obj)
+	log.Info(fmt.Sprint(obj))
 	if err != nil {
 		return
 	}
 	buf := new(bytes.Buffer)
-	unstructured.UnstructuredJSONScheme.Encode(deep,buf)
+
+	unstructured.UnstructuredJSONScheme.Encode(obj,buf)
 	u, _, err := unstructured.UnstructuredJSONScheme.Decode(buf.Bytes(),nil, nil)
 	if err != nil {
 		return
 	}
 
+
 	stru := u.(*unstructured.Unstructured)
+	log.Info(fmt.Sprint(stru))
+
 	res = stru.GetResourceVersion()
+
 	return
 }
