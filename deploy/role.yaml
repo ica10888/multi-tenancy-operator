@@ -1,5 +1,5 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
   creationTimestamp: null
   name: multi-tenancy-operator
@@ -7,7 +7,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - namespaces
   - pods
   - services
   - services/finalizers

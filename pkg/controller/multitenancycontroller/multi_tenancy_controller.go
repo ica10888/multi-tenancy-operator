@@ -216,6 +216,6 @@ func ScheduleProcessor(operatorSingleTenancyByConfigure func (*TenancyExample) (
 	reqLogger.Info(fmt.Sprintf("Start to %s",t.TenancyOperator.ToString()))
 	_ ,err := operatorSingleTenancyByConfigure(t)
 	if err != nil {
-		reqLogger.Error(err,fmt.Sprintf("Tenancy %s failed, reason: " ,t.TenancyOperator.ToString()))
+		//reqLogger.Error(err,fmt.Sprintf("Tenancy %s failed, reason: " ,t.TenancyOperator.ToString()))
 	}
 }

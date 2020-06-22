@@ -56,6 +56,7 @@ type Tenancy struct {
 
 type Chart struct {
 	ChartName string `json:"chartName"`
+	ReleaseName *string `json:"releaseName"`
 	Settings []Setting `json:"settings"`
 }
 
@@ -75,7 +76,7 @@ type StatusTenancy struct {
 type ChartMessage struct {
 	ChartName string `json:"chartName"`
 	SettingMap map[string]string `json:"settingMap"`
-	ErrorMessage string `json:"errorMessage"`
+	ErrorMessage *[]string `json:"errorMessage"`
 }
 
 type PodStatus struct {
@@ -118,7 +119,7 @@ func (cs *ControllerStatus) AppendNamespacedChart(chartName,namespace string){
 			break
 		}
 	}
-	newChartMessages := append(chartMessages,ChartMessage{chartName,make(map[string]string),""})
+	newChartMessages := append(chartMessages,ChartMessage{chartName,make(map[string]string),nil})
 	st := StatusTenancy{
 		namespace,
 		newChartMessages,

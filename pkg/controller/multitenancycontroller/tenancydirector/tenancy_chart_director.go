@@ -7,7 +7,6 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller"
 	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller/tenancydirector/helm"
-	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -40,18 +39,6 @@ func (a ChartDirector) CreateSingleTenancyByConfigure(t *multitenancycontroller.
 	if err != nil {
 		log.Error(err,"Helm Template Error")
 		return nil,err
-	}
-	//create namespace
-	ns := &v1.Namespace{}
-	ns.SetName(t.NamespacedChart.Namespace)
-	err = t.Reconcile.Client.Get(context.TODO(),types.NamespacedName{Name:t.NamespacedChart.Namespace},ns)
-	if apierrs.IsNotFound(err) {
-		log.Info(fmt.Sprintf("Namespace %s is not found,need to create"))
-		ns.SetName(t.NamespacedChart.Namespace)
-		err = t.Reconcile.Client.Create(context.TODO(),ns)
-		if err != nil {
-			log.Error(err,"Namespace create failed")
-		}
 	}
 
 	return applyOrUpdate(t,conversionCheckDataList(data))
@@ -132,6 +119,9 @@ func applyOrUpdate(t *multitenancycontroller.TenancyExample, checkDatas []string
 				errs = append(errs, err)
 			} else {
 				err = t.Reconcile.Client.Create(context.TODO(), obj.Object)
+				if apierrs.IsUnauthorized(err){
+					return succObjs,err
+				}
 				if apierrs.IsAlreadyExists(err) {
 					log.Info("Is already exists, try to update")
 
@@ -237,10 +227,10 @@ func AddResourceVersionForUpdate(c client.Client,obj *unstructured.Unstructured)
 	}
 
 
-	stru := u.(*unstructured.Unstructured)
-	obj.SetResourceVersion(stru.GetResourceVersion())
+	rvObjstru := u.(*unstructured.Unstructured)
+	obj.SetResourceVersion(rvObjstru.GetResourceVersion())
 
-	immutableFieldSolver(obj,stru)
+	immutableFieldSolver(obj,rvObjstru)
 
 	return
 }
@@ -249,13 +239,13 @@ func AddResourceVersionForUpdate(c client.Client,obj *unstructured.Unstructured)
 //If error like this:
 //is invalid: spec.clusterIP: Invalid value: "": field is immutable
 //Here add case to solve
-func immutableFieldSolver(obj,stru *unstructured.Unstructured){
+func immutableFieldSolver(obj,rvObjstru *unstructured.Unstructured){
 	switch obj.GetKind() {
 	case "Service":
-		val, found, err := unstructured.NestedString(obj.Object,"spec", "clusterIP")
+		val, found, err := unstructured.NestedString(rvObjstru.Object,"spec", "clusterIP")
 		if !found || err != nil {
 			val = ""
 		}
-		unstructured.SetNestedField(stru.Object,val,"spec", "clusterIP")
+		unstructured.SetNestedField(obj.Object,val,"spec", "clusterIP")
 	}
 }

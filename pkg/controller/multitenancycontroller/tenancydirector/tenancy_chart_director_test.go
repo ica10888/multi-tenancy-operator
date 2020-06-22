@@ -71,7 +71,7 @@ func TestDeserializer(t *testing.T) {
 func Test_immutableFieldSolver(t *testing.T) {
 	type args struct {
 		objJson  string
-		struJson string
+		rvObjstruJson string
 	}
 	tests := []struct {
 		name string
@@ -81,8 +81,8 @@ func Test_immutableFieldSolver(t *testing.T) {
 		{
 			"service-test",
 			args{
-				objJson: `{ "apiVersion": "v1", "kind": "Service", "metadata": { "name": "demo-service", "resourceVersion": "12345" }, "spec": { "clusterIP": "127.0.0.1" } }`,
-				struJson: `{ "apiVersion": "v1", "kind": "Service", "metadata": { "name": "demo-service", "resourceVersion": "0" } }`,
+				objJson: `{ "apiVersion": "v1", "kind": "Service", "metadata": { "name": "demo-service", "resourceVersion": "0" } }`,
+				rvObjstruJson: `{ "apiVersion": "v1", "kind": "Service", "metadata": { "name": "demo-service", "resourceVersion": "12345" }, "spec": { "clusterIP": "127.0.0.1" } }`,
 			},
 			"&{map[apiVersion:v1 kind:Service metadata:map[name:demo-service resourceVersion:0] spec:map[clusterIP:127.0.0.1]]}",
 		},
@@ -90,9 +90,9 @@ func Test_immutableFieldSolver(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			obj , _, _ := unstructured.UnstructuredJSONScheme.Decode([]byte(tt.args.objJson),nil, nil)
-			stru , _, _ := unstructured.UnstructuredJSONScheme.Decode([]byte(tt.args.struJson),nil, nil)
+			stru , _, _ := unstructured.UnstructuredJSONScheme.Decode([]byte(tt.args.rvObjstruJson),nil, nil)
 			immutableFieldSolver(obj.(*unstructured.Unstructured),stru.(*unstructured.Unstructured))
-			if fmt.Sprint(stru) != tt.want {
+			if fmt.Sprint(obj) != tt.want {
 				t.Errorf("Template() gotRes = %v, want %v", stru, tt.want)
 			}
 
