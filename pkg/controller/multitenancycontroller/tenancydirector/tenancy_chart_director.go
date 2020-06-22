@@ -104,6 +104,7 @@ func (a ChartDirector) DeleteSingleTenancyByConfigure(t *multitenancycontroller.
 		if err != nil {
 			log.Error(err,fmt.Sprintf("%s %s %s failed in %s",stru.GetKind(),stru.GetName(),t.TenancyOperator.ToString(),stru.GetNamespace()))
 			errs = append(errs, err)
+			break
 		}
 		log.Info(fmt.Sprintf("%s %s %s success in %s",stru.GetKind(),stru.GetName(),t.TenancyOperator.ToString(),stru.GetNamespace()))
 	}
