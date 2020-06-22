@@ -52,6 +52,7 @@ type TenancyExample struct {
 	NamespacedChart NamespacedChart
 	NamespacedController NamespacedController
 	Settings map[string]string
+	StateSettings map[string]string
 }
 
 var TenancyQueue = make(chan TenancyExample)
@@ -162,6 +163,7 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 				NamespacedChart: namespacedChart,
 				NamespacedController:NamespacedController{request.Namespace,request.Name},
 				Settings: sets,
+				StateSettings: staSets,
 			}
 			multiTenancyController.Status.AppendNamespacedChart(namespacedChart.ChartName,namespacedChart.Namespace)
 			teList = append(teList, create)

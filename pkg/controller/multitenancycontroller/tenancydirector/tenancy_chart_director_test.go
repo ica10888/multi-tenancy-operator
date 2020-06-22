@@ -1,7 +1,9 @@
 package tenancydirector
 
 import (
+	"fmt"
 	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
@@ -62,6 +64,38 @@ func TestDeserializer(t *testing.T) {
 			if gotObjs.Kubeapi != tt.wantObj {
 				t.Errorf("Deserializer() gotObjs = %v, want %v", gotObjs, tt.wantObj)
 			}
+		})
+	}
+}
+
+func Test_immutableFieldSolver(t *testing.T) {
+	type args struct {
+		objJson  string
+		struJson string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			"service-test",
+			args{
+				objJson: `{ "apiVersion": "v1", "kind": "Service", "metadata": { "name": "demo-service", "resourceVersion": "12345" }, "spec": { "clusterIP": "127.0.0.1" } }`,
+				struJson: `{ "apiVersion": "v1", "kind": "Service", "metadata": { "name": "demo-service", "resourceVersion": "0" } }`,
+			},
+			"&{map[apiVersion:v1 kind:Service metadata:map[name:demo-service resourceVersion:0] spec:map[clusterIP:127.0.0.1]]}",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			obj , _, _ := unstructured.UnstructuredJSONScheme.Decode([]byte(tt.args.objJson),nil, nil)
+			stru , _, _ := unstructured.UnstructuredJSONScheme.Decode([]byte(tt.args.struJson),nil, nil)
+			immutableFieldSolver(obj.(*unstructured.Unstructured),stru.(*unstructured.Unstructured))
+			if fmt.Sprint(stru) != tt.want {
+				t.Errorf("Template() gotRes = %v, want %v", stru, tt.want)
+			}
+
 		})
 	}
 }

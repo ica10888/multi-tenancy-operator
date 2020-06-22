@@ -21,6 +21,8 @@ spec:
           - multi-tenancy-operator
           imagePullPolicy: IfNotPresent
           env:
+            - name: CHART_HOME
+              value: "/root/chart"
             - name: WATCH_NAMESPACE
               valueFrom:
                 fieldRef:

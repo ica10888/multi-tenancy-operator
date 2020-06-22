@@ -7,6 +7,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller"
 	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller/tenancydirector/helm"
+	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -15,7 +16,6 @@ import (
 	"path"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"strings"
 )
 var log = logf.Log.WithName("tenancy_director")
 
@@ -41,37 +41,82 @@ func (a ChartDirector) CreateSingleTenancyByConfigure(t *multitenancycontroller.
 		log.Error(err,"Helm Template Error")
 		return nil,err
 	}
-	//TODO create namespace
+	//create namespace
+	ns := &v1.Namespace{}
+	ns.SetName(t.NamespacedChart.Namespace)
+	err = t.Reconcile.Client.Get(context.TODO(),types.NamespacedName{Name:t.NamespacedChart.Namespace},ns)
+	if apierrs.IsNotFound(err) {
+		log.Info(fmt.Sprintf("Namespace %s is not found,need to create"))
+		ns.SetName(t.NamespacedChart.Namespace)
+		err = t.Reconcile.Client.Create(context.TODO(),ns)
+		if err != nil {
+			log.Error(err,"Namespace create failed")
+		}
+	}
 
-	return applyOrUpdate(t,data)
+	return applyOrUpdate(t,conversionCheckDataList(data))
 }
 
 func (a ChartDirector) UpdateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
 	repo := path.Join(a.ChartHome,t.NamespacedChart.ChartName)
-	data,err :=helm.Template(repo,t.NamespacedChart.Namespace,"",false,SettingToStringValues(t.Settings))
+	data, err :=helm.Template(repo,t.NamespacedChart.Namespace,"",false,SettingToStringValues(t.Settings))
 	if err != nil {
 		log.Error(err,"Helm Template Error")
 		return nil,err
 	}
-	return applyOrUpdate(t,data)
+	staData, err :=helm.Template(repo,t.NamespacedChart.Namespace,"",false,SettingToStringValues(t.StateSettings))
+	if err != nil {
+		log.Error(err,"Helm Template Error")
+		return nil,err
+	}
+
+	checkDatas := conversionCheckDataList(data)
+	checkStateDatas := conversionCheckDataList(staData)
+	updateDatas := removeListIfNotChanged(checkDatas,checkStateDatas)
+
+	return applyOrUpdate(t,updateDatas)
 }
 
 func (a ChartDirector) DeleteSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
+	repo := path.Join(a.ChartHome,t.NamespacedChart.ChartName)
+	data, err :=helm.Template(repo,t.NamespacedChart.Namespace,"",false,SettingToStringValues(t.Settings))
+	if err != nil {
+		log.Error(err,"Helm Template Error")
+		return nil,err
+	}
+	checkDatas := conversionCheckDataList(data)
+	var errs []error
+	for _, data := range checkDatas {
+		json, err :=yaml.YAMLToJSON([]byte(data))
+		if err != nil {
+			errs = append(errs, err)
+			break
+		}
 
-	panic("implement me")
+		u, _, err := unstructured.UnstructuredJSONScheme.Decode(json,nil, nil)
+		if err != nil {
+			errs = append(errs, err)
+			break
+		}
+		stru := u.(*unstructured.Unstructured)
+		stru.SetNamespace(t.NamespacedChart.Namespace)
+		err = t.Reconcile.Client.Delete(context.TODO(),stru)
+		if err != nil {
+			log.Error(err,fmt.Sprintf("%s %s %s failed in %s",stru.GetKind(),stru.GetName(),t.TenancyOperator.ToString(),stru.GetNamespace()))
+			errs = append(errs, err)
+		}
+		log.Info(fmt.Sprintf("%s %s %s success in %s",stru.GetKind(),stru.GetName(),t.TenancyOperator.ToString(),stru.GetNamespace()))
+	}
+	if len(errs) > 0 {
+		return []multitenancycontroller.KubeObject{},ErrorsFmt("Failed, reason: ",errs)
+	}
+	return[]multitenancycontroller.KubeObject{},nil
+
 }
 
 
 
-func applyOrUpdate(t *multitenancycontroller.TenancyExample, data string) (objs []multitenancycontroller.KubeObject, err error) {
-
-	var checkDatas []string
-	datas := strings.Split(data, "---")
-	for _, s := range datas {
-		if !(strings.Trim(s, "\n") == "") {
-			checkDatas = append(checkDatas, s)
-		}
-	}
+func applyOrUpdate(t *multitenancycontroller.TenancyExample, checkDatas []string) (objs []multitenancycontroller.KubeObject, err error) {
 
 	var errs []error
 	var succObjs []multitenancycontroller.KubeObject
@@ -82,7 +127,9 @@ func applyOrUpdate(t *multitenancycontroller.TenancyExample, data string) (objs 
 		switch t.TenancyOperator {
 		case multitenancycontroller.CREATE:
 			obj,err = Deserializer(t.Reconcile.Client,checkData,t.NamespacedChart.Namespace,false)
-			if err == nil {
+			if err != nil {
+				errs = append(errs, err)
+			} else {
 				err = t.Reconcile.Client.Create(context.TODO(), obj.Object)
 				if apierrs.IsAlreadyExists(err) {
 					log.Info("Is already exists, try to update")
@@ -95,7 +142,9 @@ func applyOrUpdate(t *multitenancycontroller.TenancyExample, data string) (objs 
 			}
 		case multitenancycontroller.UPDATE:
 			obj, err = Deserializer(t.Reconcile.Client,checkData,t.NamespacedChart.Namespace,true)
-			if err == nil{
+			if err != nil {
+				errs = append(errs, err)
+			} else {
 				err = t.Reconcile.Client.Update(context.TODO(), obj.Object)
 			}
 		}
@@ -171,7 +220,7 @@ func AddResourceVersionForUpdate(c client.Client,obj *unstructured.Unstructured)
 	rvObj.SetNamespace(obj.GetNamespace())
 
 	err = c.Get(context.TODO(),types.NamespacedName{obj.GetNamespace(),obj.GetName()},rvObj)
-	log.Info(fmt.Sprint(rvObj))
+
 	if err != nil {
 		log.Error(err,"Get before update error")
 		return
@@ -190,5 +239,22 @@ func AddResourceVersionForUpdate(c client.Client,obj *unstructured.Unstructured)
 	stru := u.(*unstructured.Unstructured)
 	obj.SetResourceVersion(stru.GetResourceVersion())
 
+	immutableFieldSolver(obj,stru)
+
 	return
+}
+
+
+//If error like this:
+//is invalid: spec.clusterIP: Invalid value: "": field is immutable
+//Here add case to solve
+func immutableFieldSolver(obj,stru *unstructured.Unstructured){
+	switch obj.GetKind() {
+	case "Service":
+		val, found, err := unstructured.NestedString(obj.Object,"spec", "clusterIP")
+		if !found || err != nil {
+			val = ""
+		}
+		unstructured.SetNestedField(stru.Object,val,"spec", "clusterIP")
+	}
 }

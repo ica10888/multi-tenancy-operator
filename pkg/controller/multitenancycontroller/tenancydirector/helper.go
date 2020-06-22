@@ -2,6 +2,7 @@ package tenancydirector
 
 import (
 	"fmt"
+	"strings"
 )
 
 
@@ -22,4 +23,33 @@ func ErrorsFmt (errFmt string,errs []error) (err error){
 		errFmt += e.Error()
 	}
 	return fmt.Errorf("%s",errFmt)
+}
+
+
+func conversionCheckDataList(data string) []string{
+	var checkDatas []string
+	datas := strings.Split(data, "---")
+	for _, s := range datas {
+		if !(strings.Trim(s, "\n") == "") {
+			checkDatas = append(checkDatas, s)
+		}
+	}
+	return checkDatas
+}
+
+func removeListIfNotChanged(checkDatas,checkStateDatas []string) []string {
+	var updateDatas []string
+	for _, data := range checkDatas {
+		needAppend := true
+		for _, stateData := range checkStateDatas {
+			if data == stateData {
+				needAppend = false
+				break
+			}
+		}
+		if needAppend {
+			updateDatas = append(updateDatas, data)
+		}
+	}
+	return updateDatas
 }
