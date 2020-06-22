@@ -144,44 +144,51 @@ func serializerWithNamespaceAndResourceVersionIfNeed(c client.Client,s,namespace
 
 	stru := u.(*unstructured.Unstructured)
 
-	kapi.Namespace = namespace
+	if namespace != "" {
+		stru.SetNamespace(namespace)
+	}
+
+	kapi.Namespace = stru.GetNamespace()
 	kapi.Name = stru.GetName()
 	kapi.Kind = stru.GetKind()
 	kapi.ApiVersion = stru.GetAPIVersion()
 
 	if needResourceVersion {
-		var resourceVersion string
-		resourceVersion, err = GetResourceVersionForUpdate(c,stru)
-		stru.SetResourceVersion(resourceVersion)
+		err = AddResourceVersionForUpdate(c,stru)
 	}
 
-	if namespace != "" {
-		stru.SetNamespace(namespace)
-	}
 
-	res ,err = u.(*unstructured.Unstructured).MarshalJSON()
+	res ,err = stru.MarshalJSON()
 	return
 }
 
-func GetResourceVersionForUpdate(c client.Client,obj *unstructured.Unstructured) (res string, err error){
-	err = c.Get(context.TODO(),types.NamespacedName{obj.GetNamespace(),obj.GetName()},obj)
-	log.Info(fmt.Sprint(obj))
+func AddResourceVersionForUpdate(c client.Client,obj *unstructured.Unstructured) (err error){
+	rvObj := &unstructured.Unstructured{}
+
+	rvObj.SetAPIVersion(obj.GetAPIVersion())
+	rvObj.SetKind(obj.GetKind())
+	rvObj.SetName(obj.GetName())
+	rvObj.SetNamespace(obj.GetNamespace())
+
+	err = c.Get(context.TODO(),types.NamespacedName{obj.GetNamespace(),obj.GetName()},rvObj)
+	log.Info(fmt.Sprint(rvObj))
 	if err != nil {
+		log.Error(err,"Get before update error")
 		return
 	}
 	buf := new(bytes.Buffer)
 
-	unstructured.UnstructuredJSONScheme.Encode(obj,buf)
+	unstructured.UnstructuredJSONScheme.Encode(rvObj,buf)
+
 	u, _, err := unstructured.UnstructuredJSONScheme.Decode(buf.Bytes(),nil, nil)
 	if err != nil {
+		log.Error(err,"Get before Get decode error")
 		return
 	}
 
 
 	stru := u.(*unstructured.Unstructured)
-	log.Info(fmt.Sprint(stru))
-
-	res = stru.GetResourceVersion()
+	obj.SetResourceVersion(stru.GetResourceVersion())
 
 	return
 }

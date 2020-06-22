@@ -136,6 +136,7 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 
 	staTen := flatMapUpdatedTenancies(multiTenancyController.Status.UpdatedTenancies)
 
+	teList := []TenancyExample{}
 	for namespacedChart, _ := range staTen {
 		sets := ten[namespacedChart]
 		if sets == nil {
@@ -148,7 +149,7 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 			}
 			multiTenancyController.Status.RemoveNamespacedChart(namespacedChart.ChartName,namespacedChart.Namespace)
 			multiTenancyController.Status.UpdateNamespacedChartSettings(namespacedChart.ChartName,namespacedChart.Namespace,sets)
-			TenancyQueue <- delete
+			teList = append(teList, delete)
 
 		}
 	}
@@ -163,7 +164,7 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 				Settings: sets,
 			}
 			multiTenancyController.Status.AppendNamespacedChart(namespacedChart.ChartName,namespacedChart.Namespace)
-			TenancyQueue <- create
+			teList = append(teList, create)
 		} else {
 			if ! equal(sets,staSets) {
 				update := TenancyExample {
@@ -174,11 +175,14 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 					Settings: sets,
 				}
 				multiTenancyController.Status.UpdateNamespacedChartSettings(namespacedChart.ChartName,namespacedChart.Namespace,sets)
-				TenancyQueue <- update
+				teList = append(teList, update)
 			}
 		}
 	}
 	r.Client.Status().Update(context.TODO(),multiTenancyController)
+	for _, example := range teList {
+		TenancyQueue <- example
+	}
 	return reconcile.Result{}, nil
 }
 
