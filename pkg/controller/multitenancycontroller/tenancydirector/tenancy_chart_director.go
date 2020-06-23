@@ -134,6 +134,7 @@ func applyOrUpdate(t *multitenancycontroller.TenancyExample, checkDatas []string
 				errs = append(errs, err)
 			} else {
 				err = t.Reconcile.Client.Create(context.TODO(), obj.Object)
+				// TODO create namespace
 				if apierrs.IsUnauthorized(err){
 					return succObjs,err
 				}

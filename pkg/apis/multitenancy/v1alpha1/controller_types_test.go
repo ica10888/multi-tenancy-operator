@@ -125,3 +125,66 @@ func TestControllerStatus_UpdateNamespacedChartSettings(t *testing.T) {
 		})
 	}
 }
+
+func TestControllerStatus_UpdateNamespacedChartErrorMessage(t *testing.T) {
+	type fields struct {
+		UpdatedTenancies []StatusTenancy
+	}
+	type args struct {
+		chartName string
+		namespace string
+		err       error
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   string
+	}{
+		{
+			"base-test",
+			fields{[]StatusTenancy{
+				{
+					"dev",
+					[]ChartMessage{{"mysql",nil,nil}},
+					[]ReplicationControllerStatus{},
+					[]PodStatus{},
+
+				},
+			}},
+			args{"mysql","dev",fmt.Errorf("myErr")},
+			"",
+		},
+		{
+			"nil-pointer-test",
+			fields{[]StatusTenancy{
+				{
+					"dev",
+					[]ChartMessage{{"mysql",nil,nil}},
+					[]ReplicationControllerStatus{},
+					[]PodStatus{},
+
+				},
+			}},
+			args{"mysql","dev",nil},
+			"myErr",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cs := &ControllerStatus{
+				UpdatedTenancies: tt.fields.UpdatedTenancies,
+			}
+			cs.UpdateNamespacedChartErrorMessage(tt.args.chartName,tt.args.namespace,tt.args.err)
+			if tt.args.err == nil {
+				if cs.UpdatedTenancies[0].ChartMessages[0].ErrorMessage != nil {
+					t.Errorf("Template() gotRes = %v, want %v", cs.UpdatedTenancies, tt.want)
+				}
+			} else {
+				if *cs.UpdatedTenancies[0].ChartMessages[0].ErrorMessage != tt.want {
+					t.Errorf("Template() gotRes = %v, want %v", cs.UpdatedTenancies, tt.want)
+				}
+			}
+		})
+	}
+}

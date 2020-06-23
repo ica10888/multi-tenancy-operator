@@ -33,3 +33,7 @@ type TenancyDirector interface {
 	UpdateSingleTenancyByConfigure(t *TenancyExample) (objs []KubeObject,err error)
 	DeleteSingleTenancyByConfigure(t *TenancyExample) (objs []KubeObject,err error)
 }
+
+type TenancyWatcher interface {
+	UpdateTenancyPodStatusAndReplicationControllerStatus(objs []KubeObject,t *TenancyExample)
+}

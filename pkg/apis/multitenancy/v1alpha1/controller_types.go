@@ -185,21 +185,26 @@ func (cs *ControllerStatus) UpdateNamespacedChartSettings(chartName,namespace st
 }
 
 func (cs *ControllerStatus) UpdateNamespacedChartErrorMessage(chartName,namespace string,err error){
-	var errorMessage *string
 	if err == nil {
-		errorMessage = nil
+		cs.updateNamespacedChartForNewMessageFunc(chartName,namespace,
+			func (cm *ChartMessage) ChartMessage {
+				return ChartMessage{
+					cm.ChartName,
+					cm.SettingMap,
+					nil,
+				}
+			})
 	} else {
-		*errorMessage = err.Error()
+		errorMessage := err.Error()
+		cs.updateNamespacedChartForNewMessageFunc(chartName,namespace,
+			func (cm *ChartMessage) ChartMessage {
+				return ChartMessage{
+					cm.ChartName,
+					cm.SettingMap,
+					&errorMessage,
+				}
+			})
 	}
-
-	cs.updateNamespacedChartForNewMessageFunc(chartName,namespace,
-		func (cm *ChartMessage) ChartMessage {
-			return ChartMessage{
-				cm.ChartName,
-				cm.SettingMap,
-				errorMessage,
-			}
-		})
 }
 
 func (cs *ControllerStatus) updateNamespacedChartForNewMessageFunc(chartName,namespace string,f func (*ChartMessage) ChartMessage){

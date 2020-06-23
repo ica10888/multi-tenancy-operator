@@ -6,12 +6,6 @@ subjects:
 - kind: ServiceAccount
   name: multi-tenancy-operator
   namespace: default
-- kind: ServiceAccount
-  name: multi-tenancy-operator
-  namespace: foo
-- kind: ServiceAccount
-  name: multi-tenancy-operator
-  namespace: bar
 roleRef:
   kind: ClusterRole
   name: multi-tenancy-operator
