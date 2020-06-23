@@ -56,7 +56,7 @@ type Tenancy struct {
 
 type Chart struct {
 	ChartName string `json:"chartName"`
-	ReleaseName *string `json:"releaseName"`
+	ReleaseName *string `json:"releaseName,omitempty"`
 	Settings []Setting `json:"settings"`
 }
 
@@ -76,7 +76,7 @@ type StatusTenancy struct {
 type ChartMessage struct {
 	ChartName string `json:"chartName"`
 	SettingMap map[string]string `json:"settingMap"`
-	ErrorMessage *string `json:"errorMessage"`
+	ErrorMessage *string `json:"errorMessage,omitempty"`
 }
 
 type PodStatus struct {

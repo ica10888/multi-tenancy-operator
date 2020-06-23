@@ -140,6 +140,7 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 		return reconcile.Result{},nil
 	}
 
+	//TODO check spec if not change, do nothing
 
 	ten := flatMapTenancies(multiTenancyController.Spec.Tenancies)
 

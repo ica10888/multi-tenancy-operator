@@ -85,7 +85,13 @@ func flatMapTenancies(tenancies []v1alpha1.Tenancy) (map[NamespacedChart](map[st
 			for _, set := range chart.Settings {
 				sets[set.Key] = set.Value
 			}
-			res[NamespacedChart{namespace,*chart.ReleaseName,chart.ChartName}] = sets
+			var releaseName string
+			if chart.ReleaseName != nil{
+				releaseName = *chart.ReleaseName
+			} else {
+				releaseName = ""
+			}
+			res[NamespacedChart{namespace,chart.ChartName,releaseName}] = sets
 		}
 	}
 	return res
@@ -118,7 +124,7 @@ func separateReleaseChartName(releaseChartName string) (string,string){
 }
 
 
-func mergeReleaseChartName(releaseName,chartName string) string{
+func mergeReleaseChartName(chartName,releaseName string) string{
 	if releaseName == "" {
 		return  chartName
 	} else {
