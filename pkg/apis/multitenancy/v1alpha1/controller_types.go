@@ -136,9 +136,6 @@ func (cs *ControllerStatus) AppendNamespacedChart(chartName,namespace string){
 
 }
 
-
-
-
 func (cs *ControllerStatus) RemoveNamespacedChart(chartName,namespace string) {
 	newUpdatedTenancies := []StatusTenancy{}
 	rcList := []ReplicationControllerStatus{}
@@ -171,6 +168,53 @@ func (cs *ControllerStatus) RemoveNamespacedChart(chartName,namespace string) {
 		newUpdatedTenancies = append(append(cs.UpdatedTenancies[:index], st), cs.UpdatedTenancies[index+1:]...)
 	}
 	cs.UpdatedTenancies = newUpdatedTenancies
+}
+
+func (cs *ControllerStatus) UpdateNamespacedChartReplicationControllerStatusList(namespace string,list []ReplicationControllerStatus) {
+	cs.updateNamespacedChartForNewStatusTenancyFunc(namespace,func (st *StatusTenancy) StatusTenancy{
+		return StatusTenancy{
+			st.Namespace,
+			st.ChartMessages,
+			list,
+			st.PodStatusList,
+		}
+	})
+}
+
+func (cs *ControllerStatus) UpdateNamespacedChartPodStatusList(namespace string,list []PodStatus) {
+	cs.updateNamespacedChartForNewStatusTenancyFunc(namespace,func (st *StatusTenancy) StatusTenancy{
+		return StatusTenancy{
+			st.Namespace,
+			st.ChartMessages,
+			st.ReplicationControllerStatusList,
+			list,
+		}
+	})
+}
+
+
+func (cs *ControllerStatus) updateNamespacedChartForNewStatusTenancyFunc(namespace string,f func (*StatusTenancy) StatusTenancy) {
+	needUpdate := false
+	if namespace == "" {
+		return
+	}
+	newUpdatedTenancies := []StatusTenancy{}
+	newTenancy := StatusTenancy{}
+	index := -1
+	for i, tenancy := range cs.UpdatedTenancies {
+		if tenancy.Namespace == namespace {
+
+			newTenancy = f(&tenancy)
+
+			index = i
+			needUpdate = true
+			break
+		}
+	}
+	if needUpdate {
+		newUpdatedTenancies = append(append(cs.UpdatedTenancies[:index], newTenancy), cs.UpdatedTenancies[index+1:]...)
+		cs.UpdatedTenancies = newUpdatedTenancies
+	}
 }
 
 func (cs *ControllerStatus) UpdateNamespacedChartSettings(chartName,namespace string,sets map[string]string){
