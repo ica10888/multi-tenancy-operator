@@ -34,14 +34,14 @@ func TestControllerStatus(t *testing.T) {
 			fields{[]StatusTenancy{}},
 			[]args{{"kafka","dev"},{"mysql","dev"}},
 			[]args{{"kafka","dev"}},
-			"[{dev [{mysql map[] }] [] []}]",
+			"[{dev [{mysql map[] <nil>}] [] []}]",
 		},
 		{
 			"with-lists-test",
 			fields{[]StatusTenancy{
 				{
 					"dev",
-					[]ChartMessage{{"mysql",sets,"mysqlErr"}},
+					[]ChartMessage{{"mysql",sets,nil}},
 					[]ReplicationControllerStatus{{"mysql","Deployment","1/1"}},
 					[]PodStatus{{"mysql-0","Running"}},
 				},
@@ -49,14 +49,14 @@ func TestControllerStatus(t *testing.T) {
 			},
 			[]args{{"kafka","dev"}},
 			[]args{{"kafka","dev"}},
-			"[{dev [{mysql map[spec.username:root] mysqlErr}] [{mysql Deployment 1/1}] [{mysql-0 Running}]}]",
+			"[{dev [{mysql map[spec.username:root] <nil>}] [{mysql Deployment 1/1}] [{mysql-0 Running}]}]",
 		},
 		{
 			"more-namespaces-test",
 			fields{[]StatusTenancy{}},
 			[]args{{"kafka","dev"},{"mysql","dev"},{"redis","test"}},
 			[]args{{"kafka","dev"}},
-			"[{dev [{mysql map[] }] [] []} {test [{redis map[] }] [] []}]",
+			"[{dev [{mysql map[] <nil>}] [] []} {test [{redis map[] <nil>}] [] []}]",
 		},
 	}
 	for _, tt := range tests {
@@ -99,7 +99,7 @@ func TestControllerStatus_UpdateNamespacedChartSettings(t *testing.T) {
 			fields{[]StatusTenancy{
 					{
 						"dev",
-						[]ChartMessage{{"mysql",sets,"mysqlErr"}},
+						[]ChartMessage{{"mysql",sets,nil}},
 						[]ReplicationControllerStatus{{"mysql","Deployment","1/1"}},
 						[]PodStatus{{"mysql-0","Running"}},
 
@@ -107,7 +107,7 @@ func TestControllerStatus_UpdateNamespacedChartSettings(t *testing.T) {
 				},
 			},
 			args{"mysql", "dev", sets},
-			"[{dev [{mysql map[spec.username:root] mysqlErr}] [{mysql Deployment 1/1}] [{mysql-0 Running}]}]",
+			"[{dev [{mysql map[spec.username:root] <nil>}] [{mysql Deployment 1/1}] [{mysql-0 Running}]}]",
 
 		},
 

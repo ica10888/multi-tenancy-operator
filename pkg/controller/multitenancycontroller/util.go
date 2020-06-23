@@ -9,11 +9,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"math"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strings"
 )
 
 
-func checkMultiTenancyController(c client.Client, reqLogger logr.Logger, request reconcile.Request) (*v1alpha1.Controller,error){
+func checkMultiTenancyController(c client.Client, reqLogger logr.Logger) (*v1alpha1.Controller,error){
 	multiTenancyControllerList := &v1alpha1.ControllerList{}
 	multiTenancyController := &v1alpha1.Controller{}
 
@@ -61,7 +61,8 @@ func flatMapUpdatedTenancies(tenancies []v1alpha1.StatusTenancy) (map[Namespaced
 	for _, tenancy := range tenancies {
 		namespace := tenancy.Namespace
 		for _, chart := range tenancy.ChartMessages {
-			res[NamespacedChart{namespace,chart.ChartName}] = chart.SettingMap
+			chartName,releaseName := separateReleaseChartName(chart.ChartName)
+			res[NamespacedChart{namespace,chartName,releaseName}] = chart.SettingMap
 		}
 	}
 	return res
@@ -84,7 +85,7 @@ func flatMapTenancies(tenancies []v1alpha1.Tenancy) (map[NamespacedChart](map[st
 			for _, set := range chart.Settings {
 				sets[set.Key] = set.Value
 			}
-			res[NamespacedChart{namespace,chart.ChartName}] = sets
+			res[NamespacedChart{namespace,*chart.ReleaseName,chart.ChartName}] = sets
 		}
 	}
 	return res
@@ -103,4 +104,24 @@ func equal(s1,s2 map[string]string) bool{
 		}
 	}
 	return true
+}
+
+
+
+func separateReleaseChartName(releaseChartName string) (string,string){
+	strs := strings.Split(releaseChartName,"(")
+	if len(strs) == 1 {
+		return releaseChartName,""
+	} else {
+		return strs[0], strings.ReplaceAll(strs[1], ")", "")
+	}
+}
+
+
+func mergeReleaseChartName(releaseName,chartName string) string{
+	if releaseName == "" {
+		return  chartName
+	} else {
+		return chartName + "(" + releaseName + ")"
+	}
 }

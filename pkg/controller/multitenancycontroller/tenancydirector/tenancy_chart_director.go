@@ -34,8 +34,13 @@ func ChartDirectorFor() ChartDirector {
 }
 
 func (a ChartDirector) CreateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
+	releaseName := t.NamespacedChart.Namespace
+	if t.NamespacedChart.ReleaseName != "" {
+		releaseName = t.NamespacedChart.ReleaseName
+	}
+
 	repo := path.Join(a.ChartHome,t.NamespacedChart.ChartName)
-	data,err :=helm.Template(repo,t.NamespacedChart.Namespace,"",false,SettingToStringValues(t.Settings))
+	data,err :=helm.Template(repo,releaseName,"",false,SettingToStringValues(t.Settings))
 	if err != nil {
 		log.Error(err,"Helm Template Error")
 		return nil,err
@@ -45,13 +50,18 @@ func (a ChartDirector) CreateSingleTenancyByConfigure(t *multitenancycontroller.
 }
 
 func (a ChartDirector) UpdateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
+	releaseName := t.NamespacedChart.Namespace
+	if t.NamespacedChart.ReleaseName != "" {
+		releaseName = t.NamespacedChart.ReleaseName
+	}
+
 	repo := path.Join(a.ChartHome,t.NamespacedChart.ChartName)
-	data, err :=helm.Template(repo,t.NamespacedChart.Namespace,"",false,SettingToStringValues(t.Settings))
+	data, err :=helm.Template(repo,releaseName,"",false,SettingToStringValues(t.Settings))
 	if err != nil {
 		log.Error(err,"Helm Template Error")
 		return nil,err
 	}
-	staData, err :=helm.Template(repo,t.NamespacedChart.Namespace,"",false,SettingToStringValues(t.StateSettings))
+	staData, err :=helm.Template(repo,releaseName,"",false,SettingToStringValues(t.StateSettings))
 	if err != nil {
 		log.Error(err,"Helm Template Error")
 		return nil,err
@@ -65,8 +75,13 @@ func (a ChartDirector) UpdateSingleTenancyByConfigure(t *multitenancycontroller.
 }
 
 func (a ChartDirector) DeleteSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
+	releaseName := t.NamespacedChart.Namespace
+	if t.NamespacedChart.ReleaseName != "" {
+		releaseName = t.NamespacedChart.ReleaseName
+	}
+
 	repo := path.Join(a.ChartHome,t.NamespacedChart.ChartName)
-	data, err :=helm.Template(repo,t.NamespacedChart.Namespace,"",false,SettingToStringValues(t.Settings))
+	data, err :=helm.Template(repo,releaseName,"",false,SettingToStringValues(t.Settings))
 	if err != nil {
 		log.Error(err,"Helm Template Error")
 		return nil,err

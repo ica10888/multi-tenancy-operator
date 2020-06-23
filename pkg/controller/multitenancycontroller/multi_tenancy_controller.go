@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/ica10888/multi-tenancy-operator/pkg/apis/multitenancy/v1alpha1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -40,6 +41,7 @@ const (
 type NamespacedChart struct {
 	Namespace string
 	ChartName string
+	ReleaseName string
 }
 type NamespacedController struct {
 	Namespace string
@@ -56,6 +58,12 @@ type TenancyExample struct {
 }
 
 var TenancyQueue = make(chan TenancyExample)
+
+var fmtAuthErr = `
+Unauthorized Error in %s, please execute cmd to solve:
+kubectl create namespace %s
+echo '{"apiVersion":"v1","kind":"ServiceAccount","metadata":{"name":"multi-tenancy-operator"}}' |  kubectl create -n %s -f -
+kubectl get clusterrolebinding multi-tenancy-operator -n %s -o json | jq '.subjects[ .subjects | length] +=  {"kind":"ServiceAccount","name": "multi-tenancy-operator","namespace": "%s"}'  | kubectl apply -n %s -f -`
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -114,14 +122,14 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 
 	defer func(){
 		if err := recover(); err != nil {
-			reqLogger.Error(fmt.Errorf("%s",err),"recover Err: ")
+			reqLogger.Error(fmt.Errorf("%s",err),"recover Err")
 		}
 	}()
 
 	// Fetch the multiTenancyController instance
-	multiTenancyController,err := checkMultiTenancyController(r.Client,reqLogger ,request)
+	multiTenancyController,err := checkMultiTenancyController(r.Client,reqLogger)
 	if err != nil {
-		reqLogger.Error(err,"Check Err: ")
+		reqLogger.Error(err,"Check Err")
 		return reconcile.Result{}, err
 	}
 
@@ -148,7 +156,8 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 				NamespacedController:NamespacedController{request.Namespace,request.Name},
 				Settings: sets,
 			}
-			multiTenancyController.Status.RemoveNamespacedChart(namespacedChart.ChartName,namespacedChart.Namespace)
+			chartName := mergeReleaseChartName(namespacedChart.ChartName,namespacedChart.ReleaseName)
+			multiTenancyController.Status.RemoveNamespacedChart(chartName,namespacedChart.Namespace)
 			multiTenancyController.Status.UpdateNamespacedChartSettings(namespacedChart.ChartName,namespacedChart.Namespace,sets)
 			teList = append(teList, delete)
 
@@ -165,7 +174,8 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 				Settings: sets,
 				StateSettings: staSets,
 			}
-			multiTenancyController.Status.AppendNamespacedChart(namespacedChart.ChartName,namespacedChart.Namespace)
+			chartName := mergeReleaseChartName(namespacedChart.ChartName,namespacedChart.ReleaseName)
+			multiTenancyController.Status.AppendNamespacedChart(chartName,namespacedChart.Namespace)
 			teList = append(teList, create)
 		} else {
 			if ! equal(sets,staSets) {
@@ -176,7 +186,8 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 					NamespacedController:NamespacedController{request.Namespace,request.Name},
 					Settings: sets,
 				}
-				multiTenancyController.Status.UpdateNamespacedChartSettings(namespacedChart.ChartName,namespacedChart.Namespace,sets)
+				chartName := mergeReleaseChartName(namespacedChart.ChartName,namespacedChart.ReleaseName)
+				multiTenancyController.Status.UpdateNamespacedChartSettings(chartName,namespacedChart.Namespace,sets)
 				teList = append(teList, update)
 			}
 		}
@@ -210,12 +221,28 @@ func ScheduleProcessor(operatorSingleTenancyByConfigure func (*TenancyExample) (
 	reqLogger := log.WithValues("Namespace", t.NamespacedController.Namespace, "Name", t.NamespacedController.ControllerName)
 	defer func(){
 		if err := recover(); err != nil {
-			reqLogger.Error(fmt.Errorf("%s",err),"recover Err: ")
+			reqLogger.Error(fmt.Errorf("%s",err),"recover Err")
+
+			multiTenancyController,err := checkMultiTenancyController(t.Reconcile.Client,reqLogger)
+			if err != nil {
+				reqLogger.Error(err,"Write ErrorMessage Check Err")
+			}
+			chartName := mergeReleaseChartName(t.NamespacedChart.ChartName,t.NamespacedChart.ReleaseName)
+			multiTenancyController.Status.UpdateNamespacedChartErrorMessage(chartName,t.NamespacedChart.Namespace,fmt.Errorf("%s",err))
+			t.Reconcile.Client.Update(context.TODO(),multiTenancyController)
 		}
 	}()
 	reqLogger.Info(fmt.Sprintf("Start to %s",t.TenancyOperator.ToString()))
 	_ ,err := operatorSingleTenancyByConfigure(t)
+
+	multiTenancyController,err := checkMultiTenancyController(t.Reconcile.Client,reqLogger)
 	if err != nil {
-		//reqLogger.Error(err,fmt.Sprintf("Tenancy %s failed, reason: " ,t.TenancyOperator.ToString()))
+		reqLogger.Error(err,"Write ErrorMessage Check Err")
 	}
+	if apierrs.IsUnauthorized(err){
+		err = fmt.Errorf(fmtAuthErr,t.NamespacedChart.Namespace,t.NamespacedChart.Namespace,t.NamespacedChart.Namespace,multiTenancyController.Namespace,t.NamespacedChart.Namespace,multiTenancyController.Namespace)
+	}
+	chartName := mergeReleaseChartName(t.NamespacedChart.ChartName,t.NamespacedChart.ReleaseName)
+	multiTenancyController.Status.UpdateNamespacedChartErrorMessage(chartName,t.NamespacedChart.Namespace,err)
+	t.Reconcile.Client.Update(context.TODO(),multiTenancyController)
 }

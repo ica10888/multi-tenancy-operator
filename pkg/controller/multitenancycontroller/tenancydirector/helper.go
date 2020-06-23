@@ -20,6 +20,7 @@ func SettingToStringValues(sets map[string]string) (strs []string){
 
 func ErrorsFmt (errFmt string,errs []error) (err error){
 	for _, e := range errs {
+		errFmt += "\n"
 		errFmt += e.Error()
 	}
 	return fmt.Errorf("%s",errFmt)
