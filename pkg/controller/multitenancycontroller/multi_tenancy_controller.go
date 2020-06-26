@@ -159,15 +159,33 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 	}
 	localSpec = checkMultiTenancyController.Spec.Tenancies
 
+	teList, result, err := addTenancyExampleList(checkMultiTenancyController, err, r, reqLogger)
+	if err != nil {
+		return result, err
+	}
 
+	for _, example := range teList {
+		TenancyQueue <- example
+	}
+	return reconcile.Result{}, nil
+}
+
+func addTenancyExampleList(checkMultiTenancyController *v1alpha1.Controller, err error, r *ReconcileMultiTenancyController, reqLogger logr.Logger) ([]TenancyExample, reconcile.Result, error) {
+	defer func(){
+		Mutex.Unlock()
+		if err := recover(); err != nil {
+			reqLogger.Error(fmt.Errorf("%s",err),"recover Err")
+		}
+	}()
 	Mutex.Lock()
+
 	multiTenancyController := &v1alpha1.Controller{}
 
-	controllerNamespacedName := types.NamespacedName{checkMultiTenancyController.Namespace,checkMultiTenancyController.Name}
+	controllerNamespacedName := types.NamespacedName{checkMultiTenancyController.Namespace, checkMultiTenancyController.Name}
 
-	err = r.Client.Get(context.TODO(),controllerNamespacedName,multiTenancyController)
+	err = r.Client.Get(context.TODO(), controllerNamespacedName, multiTenancyController)
 	if err != nil {
-		return reconcile.Result{},err
+		return nil, reconcile.Result{}, err
 	}
 
 	reqLogger.Info("Reconciling multiTenancyController")
@@ -180,24 +198,23 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 
 	namespaces := []string{}
 	for _, tenancy := range multiTenancyController.Spec.Tenancies {
-		namespaces = append(namespaces,tenancy.Namespace)
+		namespaces = append(namespaces, tenancy.Namespace)
 	}
-
 
 	for namespacedChart, _ := range staTen {
 		sets := ten[namespacedChart]
 		if sets == nil {
-			delete := TenancyExample {
-				Reconcile: r,
-				TenancyOperator: DELETE,
-				NamespacedChart: namespacedChart,
-				NamespacedController:controllerNamespacedName,
-				Namespaces: namespaces,
-				Settings: sets,
+			delete := TenancyExample{
+				Reconcile:            r,
+				TenancyOperator:      DELETE,
+				NamespacedChart:      namespacedChart,
+				NamespacedController: controllerNamespacedName,
+				Namespaces:           namespaces,
+				Settings:             sets,
 			}
-			chartName := mergeReleaseChartName(namespacedChart.ChartName,namespacedChart.ReleaseName)
-			multiTenancyController.Status.RemoveNamespacedChart(chartName,namespacedChart.Namespace)
-			multiTenancyController.Status.UpdateNamespacedChartSettings(namespacedChart.ChartName,namespacedChart.Namespace,sets)
+			chartName := mergeReleaseChartName(namespacedChart.ChartName, namespacedChart.ReleaseName)
+			multiTenancyController.Status.RemoveNamespacedChart(chartName, namespacedChart.Namespace)
+			multiTenancyController.Status.UpdateNamespacedChartSettings(namespacedChart.ChartName, namespacedChart.Namespace, sets)
 			teList = append(teList, delete)
 
 		}
@@ -205,41 +222,35 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 	for namespacedChart, sets := range ten {
 		staSets := staTen[namespacedChart]
 		if staSets == nil {
-			create := TenancyExample {
-				Reconcile: r,
-				TenancyOperator: CREATE,
-				NamespacedChart: namespacedChart,
-				NamespacedController:controllerNamespacedName,
-				Settings: sets,
-				StateSettings: staSets,
+			create := TenancyExample{
+				Reconcile:            r,
+				TenancyOperator:      CREATE,
+				NamespacedChart:      namespacedChart,
+				NamespacedController: controllerNamespacedName,
+				Settings:             sets,
+				StateSettings:        staSets,
 			}
-			chartName := mergeReleaseChartName(namespacedChart.ChartName,namespacedChart.ReleaseName)
-			multiTenancyController.Status.AppendNamespacedChart(chartName,namespacedChart.Namespace)
+			chartName := mergeReleaseChartName(namespacedChart.ChartName, namespacedChart.ReleaseName)
+			multiTenancyController.Status.AppendNamespacedChart(chartName, namespacedChart.Namespace)
 			teList = append(teList, create)
 		} else {
-			if ! equal(sets,staSets) {
-				update := TenancyExample {
-					Reconcile: r,
-					TenancyOperator: UPDATE,
-					NamespacedChart: namespacedChart,
-					NamespacedController:controllerNamespacedName,
-					Namespaces: namespaces,
-					Settings: sets,
+			if !equal(sets, staSets) {
+				update := TenancyExample{
+					Reconcile:            r,
+					TenancyOperator:      UPDATE,
+					NamespacedChart:      namespacedChart,
+					NamespacedController: controllerNamespacedName,
+					Namespaces:           namespaces,
+					Settings:             sets,
 				}
-				chartName := mergeReleaseChartName(namespacedChart.ChartName,namespacedChart.ReleaseName)
-				multiTenancyController.Status.UpdateNamespacedChartSettings(chartName,namespacedChart.Namespace,sets)
+				chartName := mergeReleaseChartName(namespacedChart.ChartName, namespacedChart.ReleaseName)
+				multiTenancyController.Status.UpdateNamespacedChartSettings(chartName, namespacedChart.Namespace, sets)
 				teList = append(teList, update)
 			}
 		}
 	}
-	r.Client.Status().Update(context.TODO(),multiTenancyController)
-
-	Mutex.Unlock()
-
-	for _, example := range teList {
-		TenancyQueue <- example
-	}
-	return reconcile.Result{}, nil
+	r.Client.Status().Update(context.TODO(), multiTenancyController)
+	return teList, reconcile.Result{},err
 }
 
 func checkMultiTenancyController(c client.Client, reqLogger logr.Logger) (*v1alpha1.Controller,error){

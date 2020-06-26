@@ -35,6 +35,9 @@ type TenancyDirector interface {
 }
 
 type TenancyWatcher interface {
+	CreateTenancyPodStatusAndReplicationControllerStatus(objs []KubeObject,t *TenancyExample)
 	UpdateTenancyPodStatusAndReplicationControllerStatus(objs []KubeObject,t *TenancyExample)
-	UpdateTenancyNamespaces(t *TenancyExample)
+	DeleteTenancyPodStatusAndReplicationControllerStatus(objs []KubeObject,t *TenancyExample)
+	CreateTenancyNamespacesIfNeed(t *TenancyExample)
+	DeleteTenancyNamespacesIfNeed(t *TenancyExample)
 }

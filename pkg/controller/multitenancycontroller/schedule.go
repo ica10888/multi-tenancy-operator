@@ -13,23 +13,48 @@ func LoopSchedule(tenancyDirector TenancyDirector,tenancyWatcher TenancyWatcher)
 			tenancyExample := <- TenancyQueue
 			switch tenancyExample.TenancyOperator {
 			case UPDATE:
-				objs:= ScheduleProcessor(tenancyDirector.UpdateSingleTenancyByConfigure,&tenancyExample)
-				tenancyWatcher.UpdateTenancyNamespaces(&tenancyExample)
-				tenancyWatcher.UpdateTenancyPodStatusAndReplicationControllerStatus(objs,&tenancyExample)
+				objs:= recoverScheduleProcessor(tenancyDirector.UpdateSingleTenancyByConfigure,&tenancyExample)
+				recoverRCAndPodWatcherProcessor(tenancyWatcher.CreateTenancyPodStatusAndReplicationControllerStatus,objs,&tenancyExample)
 			case CREATE:
-				objs:= ScheduleProcessor(tenancyDirector.CreateSingleTenancyByConfigure,&tenancyExample)
-				tenancyWatcher.UpdateTenancyPodStatusAndReplicationControllerStatus(objs,&tenancyExample)
+				objs:= recoverScheduleProcessor(tenancyDirector.CreateSingleTenancyByConfigure,&tenancyExample)
+				recoverNamespaceWatcherProcessor(tenancyWatcher.CreateTenancyNamespacesIfNeed,&tenancyExample)
+				recoverRCAndPodWatcherProcessor(tenancyWatcher.UpdateTenancyPodStatusAndReplicationControllerStatus,objs,&tenancyExample)
 			case DELETE:
-				ScheduleProcessor(tenancyDirector.DeleteSingleTenancyByConfigure,&tenancyExample)
-				tenancyWatcher.UpdateTenancyNamespaces(&tenancyExample)
+				objs:= recoverScheduleProcessor(tenancyDirector.DeleteSingleTenancyByConfigure,&tenancyExample)
+				recoverNamespaceWatcherProcessor(tenancyWatcher.DeleteTenancyNamespacesIfNeed,&tenancyExample)
+				recoverRCAndPodWatcherProcessor(tenancyWatcher.DeleteTenancyPodStatusAndReplicationControllerStatus,objs,&tenancyExample)
 			}
 		}
 	}()
 
 }
 
-func ScheduleProcessor(operatorSingleTenancyByConfigure func (*TenancyExample) ([]KubeObject,error),t *TenancyExample) (objs []KubeObject) {
-	reqLogger := log.WithValues("Namespace", t.NamespacedController.Namespace, "Name", t.NamespacedController.ControllerName)
+func recoverNamespaceWatcherProcessor(tenancyNamespacesFunc func(*TenancyExample), t *TenancyExample){
+	reqLogger := log.WithValues("Namespace", t.NamespacedController.Namespace, "Name", t.NamespacedController.Name)
+	defer func(){
+		Mutex.Unlock()
+		if err := recover(); err != nil {
+			reqLogger.Error(fmt.Errorf("%s",err),"recover Err")
+		}
+	}()
+	Mutex.Lock()
+	tenancyNamespacesFunc(t)
+}
+
+func recoverRCAndPodWatcherProcessor(tenancyRCAndPodFunc func([]KubeObject,*TenancyExample),objs []KubeObject, t *TenancyExample){
+	reqLogger := log.WithValues("Namespace", t.NamespacedController.Namespace, "Name", t.NamespacedController.Name)
+	defer func(){
+		Mutex.Unlock()
+		if err := recover(); err != nil {
+			reqLogger.Error(fmt.Errorf("%s",err),"recover Err")
+		}
+	}()
+	Mutex.Lock()
+	tenancyRCAndPodFunc(objs,t)
+}
+
+func recoverScheduleProcessor(operatorSingleTenancyByConfigure func (*TenancyExample) ([]KubeObject,error),t *TenancyExample) (objs []KubeObject) {
+	reqLogger := log.WithValues("Namespace", t.NamespacedController.Namespace, "Name", t.NamespacedController.Name)
 	defer func(){
 		if err := recover(); err != nil {
 			reqLogger.Error(fmt.Errorf("%s",err),"recover Err")

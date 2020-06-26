@@ -68,7 +68,7 @@ func equalTenancies(t1,t2 []v1alpha1.Tenancy) bool{
 		 	return false
 		 }
 		for j := range t1[i].Charts {
-			if t1[i].Charts[j].ChartName != t2[i].Charts[j].ChartName || *t1[i].Charts[j].ReleaseName != *t2[i].Charts[j].ReleaseName || len(t1[i].Charts[j].Settings) != len(t2[i].Charts[j].Settings){
+			if t1[i].Charts[j].ChartName != t2[i].Charts[j].ChartName || equalStringPointer(t1[i].Charts[j].ReleaseName,t2[i].Charts[j].ReleaseName) || len(t1[i].Charts[j].Settings) != len(t2[i].Charts[j].Settings){
 				return false
 			}
 			for k := range t1[i].Charts[j].Settings {
@@ -97,4 +97,14 @@ func mergeReleaseChartName(chartName,releaseName string) string{
 	} else {
 		return chartName + "(" + releaseName + ")"
 	}
+}
+
+func equalStringPointer (a,b *string) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a != nil && *a == *b {
+		return true
+	}
+	return false
 }
