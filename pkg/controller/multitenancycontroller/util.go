@@ -59,7 +59,27 @@ func equal(s1,s2 map[string]string) bool{
 	return true
 }
 
-
+func equalTenancies(t1,t2 []v1alpha1.Tenancy) bool{
+	if len(t1) != len(t2) {
+		return false
+	}
+	for i := range t1 {
+		 if t1[i].Namespace != 	t2[i].Namespace || len(t1[i].Charts) != len(t2[i].Charts) {
+		 	return false
+		 }
+		for j := range t1[i].Charts {
+			if t1[i].Charts[j].ChartName != t2[i].Charts[j].ChartName || *t1[i].Charts[j].ReleaseName != *t2[i].Charts[j].ReleaseName || len(t1[i].Charts[j].Settings) != len(t2[i].Charts[j].Settings){
+				return false
+			}
+			for k := range t1[i].Charts[j].Settings {
+				if t1[i].Charts[j].Settings[k] != t2[i].Charts[j].Settings[k]{
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
 
 func separateReleaseChartName(releaseChartName string) (string,string){
 	strs := strings.Split(releaseChartName,"(")

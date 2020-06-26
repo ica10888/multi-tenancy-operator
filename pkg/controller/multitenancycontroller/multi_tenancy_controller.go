@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/ica10888/multi-tenancy-operator/pkg/apis/multitenancy/v1alpha1"
+	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller/tenancydirector"
+	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller/tenancywatcher"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"math"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -16,9 +19,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	"sync"
 )
 
 var log = logf.Log.WithName("controller_multi_tenancy")
+
+var Mutex sync.Mutex
+
 
 type TenancyOperator string
 
@@ -46,19 +53,20 @@ type NamespacedChart struct {
 	ChartName string
 	ReleaseName string
 }
-type NamespacedController struct {
-	Namespace string
-	ControllerName string
-}
+
 
 type TenancyExample struct {
 	Reconcile *ReconcileMultiTenancyController
 	TenancyOperator TenancyOperator
 	NamespacedChart NamespacedChart
-	NamespacedController NamespacedController
+	NamespacedController types.NamespacedName
+	Namespaces []string
 	Settings map[string]string
 	StateSettings map[string]string
 }
+
+
+var localSpec = []v1alpha1.Tenancy{}
 
 var TenancyQueue = make(chan TenancyExample)
 
@@ -79,6 +87,10 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+
+	// Choose tenancy-director constructor and tenancy-watcher constructor, like Plugins
+	LoopSchedule(tenancydirector.ChartDirectorFor(),tenancywatcher.ReplicationControllerWatcherFor(manager.Manager.GetConfig(mgr.GetConfig())))
+
 	return &ReconcileMultiTenancyController{Client: mgr.GetClient(), Scheme: mgr.GetScheme()}
 }
 
@@ -121,7 +133,6 @@ type ReconcileMultiTenancyController struct {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling multiTenancyController")
 
 	defer func(){
 		if err := recover(); err != nil {
@@ -130,26 +141,49 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 	}()
 
 	// Fetch the multiTenancyController instance
-	multiTenancyController,err := checkMultiTenancyController(r.Client,reqLogger)
+	checkMultiTenancyController,err := checkMultiTenancyController(r.Client,reqLogger)
 	if err != nil {
 		reqLogger.Error(err,"Check Err")
 		return reconcile.Result{}, err
 	}
 
-	if multiTenancyController.InitCheck() {
-		r.Client.Update(context.TODO(),multiTenancyController)
-		r.Client.Status().Update(context.TODO(),multiTenancyController)
+	if checkMultiTenancyController.InitCheck() {
+		r.Client.Update(context.TODO(),checkMultiTenancyController)
+		r.Client.Status().Update(context.TODO(),checkMultiTenancyController)
 		reqLogger.Info("Init check failed, init multiTenancyController")
 		return reconcile.Result{},nil
 	}
 
-	//TODO check spec if not change, do nothing
+	if equalTenancies(checkMultiTenancyController.Spec.Tenancies,localSpec) {
+		return reconcile.Result{},nil
+	}
+	localSpec = checkMultiTenancyController.Spec.Tenancies
+
+
+	Mutex.Lock()
+	multiTenancyController := &v1alpha1.Controller{}
+
+	controllerNamespacedName := types.NamespacedName{checkMultiTenancyController.Namespace,checkMultiTenancyController.Name}
+
+	err = r.Client.Get(context.TODO(),controllerNamespacedName,multiTenancyController)
+	if err != nil {
+		return reconcile.Result{},err
+	}
+
+	reqLogger.Info("Reconciling multiTenancyController")
 
 	ten := flatMapTenancies(multiTenancyController.Spec.Tenancies)
 
 	staTen := flatMapUpdatedTenancies(multiTenancyController.Status.UpdatedTenancies)
 
 	teList := []TenancyExample{}
+
+	namespaces := []string{}
+	for _, tenancy := range multiTenancyController.Spec.Tenancies {
+		namespaces = append(namespaces,tenancy.Namespace)
+	}
+
+
 	for namespacedChart, _ := range staTen {
 		sets := ten[namespacedChart]
 		if sets == nil {
@@ -157,7 +191,8 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 				Reconcile: r,
 				TenancyOperator: DELETE,
 				NamespacedChart: namespacedChart,
-				NamespacedController:NamespacedController{request.Namespace,request.Name},
+				NamespacedController:controllerNamespacedName,
+				Namespaces: namespaces,
 				Settings: sets,
 			}
 			chartName := mergeReleaseChartName(namespacedChart.ChartName,namespacedChart.ReleaseName)
@@ -174,7 +209,7 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 				Reconcile: r,
 				TenancyOperator: CREATE,
 				NamespacedChart: namespacedChart,
-				NamespacedController:NamespacedController{request.Namespace,request.Name},
+				NamespacedController:controllerNamespacedName,
 				Settings: sets,
 				StateSettings: staSets,
 			}
@@ -187,7 +222,8 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 					Reconcile: r,
 					TenancyOperator: UPDATE,
 					NamespacedChart: namespacedChart,
-					NamespacedController:NamespacedController{request.Namespace,request.Name},
+					NamespacedController:controllerNamespacedName,
+					Namespaces: namespaces,
 					Settings: sets,
 				}
 				chartName := mergeReleaseChartName(namespacedChart.ChartName,namespacedChart.ReleaseName)
@@ -197,6 +233,9 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 		}
 	}
 	r.Client.Status().Update(context.TODO(),multiTenancyController)
+
+	Mutex.Unlock()
+
 	for _, example := range teList {
 		TenancyQueue <- example
 	}

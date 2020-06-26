@@ -1,25 +1,56 @@
 package tenancywatcher
 
-import "github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller"
+import (
+	"context"
+	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"sync"
+)
 
-type NamespacedReplicationController struct {
-	Name string
-	Namespace string
+
+
+
+var NamespaceMap sync.Map
+
+type NamespacedRC struct {
+	Ctx context.Context
+	NamespacedRCMap  map[ApiVersionRC]NamespacedRCMap
 }
 
-type NamespacedPod struct {
-	Name string
-	Namespace string
+type NamespacedRCMap struct {
+	Ctx context.Context
+	ChartRCList []ChartRC
+}
+
+type ApiVersionRC struct {
+	ApiVersion string
+	Kind string
+}
+
+type ChartRC struct {
+	ChartName string
+	RCName string
 }
 
 type ReplicationControllerWatcher struct {
+	ClientSet *kubernetes.Clientset
 }
 
-func ReplicationControllerWatcherFor() ReplicationControllerWatcher {
-	return ReplicationControllerWatcher{}
+func ReplicationControllerWatcherFor(config *rest.Config) ReplicationControllerWatcher {
+	clientSet, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err)
+	}
+	//TODO init watcher
+	return ReplicationControllerWatcher{clientSet}
 }
 
-func (tw ReplicationControllerWatcher) UpdateTenancyPodStatusAndReplicationControllerStatus(objs []multitenancycontroller.KubeObject, t *multitenancycontroller.TenancyExample) {
+func (w ReplicationControllerWatcher) UpdateTenancyPodStatusAndReplicationControllerStatus(objs []multitenancycontroller.KubeObject, t *multitenancycontroller.TenancyExample) {
+
+}
+
+func (w ReplicationControllerWatcher) UpdateTenancyNamespaces(t *multitenancycontroller.TenancyExample) {
 
 }
 

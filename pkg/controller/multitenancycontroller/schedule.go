@@ -14,12 +14,14 @@ func LoopSchedule(tenancyDirector TenancyDirector,tenancyWatcher TenancyWatcher)
 			switch tenancyExample.TenancyOperator {
 			case UPDATE:
 				objs:= ScheduleProcessor(tenancyDirector.UpdateSingleTenancyByConfigure,&tenancyExample)
+				tenancyWatcher.UpdateTenancyNamespaces(&tenancyExample)
 				tenancyWatcher.UpdateTenancyPodStatusAndReplicationControllerStatus(objs,&tenancyExample)
 			case CREATE:
 				objs:= ScheduleProcessor(tenancyDirector.CreateSingleTenancyByConfigure,&tenancyExample)
 				tenancyWatcher.UpdateTenancyPodStatusAndReplicationControllerStatus(objs,&tenancyExample)
 			case DELETE:
 				ScheduleProcessor(tenancyDirector.DeleteSingleTenancyByConfigure,&tenancyExample)
+				tenancyWatcher.UpdateTenancyNamespaces(&tenancyExample)
 			}
 		}
 	}()

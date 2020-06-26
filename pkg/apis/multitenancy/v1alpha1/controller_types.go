@@ -88,6 +88,7 @@ type ReplicationControllerStatus struct {
 	ReplicationControllerName string `json:"replicationControllerName"`
 	ApiVersion string `json:"apiVersion"`
 	Ready string `json:"ready"`
+	UnderChartName string `json:"underChartName"`
 }
 
 func (c *Controller) InitCheck() bool{
