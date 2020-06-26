@@ -87,33 +87,27 @@ func (a ChartDirector) DeleteSingleTenancyByConfigure(t *multitenancycontroller.
 		return nil,err
 	}
 	checkDatas := conversionCheckDataList(data)
-	var errs []error
-	for _, data := range checkDatas {
-		json, err :=yaml.YAMLToJSON([]byte(data))
-		if err != nil {
-			errs = append(errs, err)
-			break
-		}
 
-		u, _, err := unstructured.UnstructuredJSONScheme.Decode(json,nil, nil)
+	var errs []error
+	var succObjs []multitenancycontroller.KubeObject
+
+	for _, checkData := range checkDatas {
+		obj,err := Deserializer(t.Reconcile.Client,checkData,t.NamespacedChart.Namespace,false)
 		if err != nil {
 			errs = append(errs, err)
 			break
 		}
-		stru := u.(*unstructured.Unstructured)
-		stru.SetNamespace(t.NamespacedChart.Namespace)
-		err = t.Reconcile.Client.Delete(context.TODO(),stru)
+		err = t.Reconcile.Client.Delete(context.TODO(),obj.Object)
 		if err != nil {
-			log.Error(err,fmt.Sprintf("%s %s %s failed in %s",stru.GetKind(),stru.GetName(),t.TenancyOperator.ToString(),stru.GetNamespace()))
 			errs = append(errs, err)
-			break
+		} else {
+			succObjs = append(succObjs, obj)
 		}
-		log.Info(fmt.Sprintf("%s %s %s success in %s",stru.GetKind(),stru.GetName(),t.TenancyOperator.ToString(),stru.GetNamespace()))
 	}
 	if len(errs) > 0 {
-		return []multitenancycontroller.KubeObject{},ErrorsFmt("Failed, reason: ",errs)
+		return succObjs,ErrorsFmt("Failed, reason: ",errs)
 	}
-	return[]multitenancycontroller.KubeObject{},nil
+	return succObjs,nil
 
 }
 
