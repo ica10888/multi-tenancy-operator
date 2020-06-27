@@ -100,8 +100,10 @@ func (a ChartDirector) DeleteSingleTenancyByConfigure(t *multitenancycontroller.
 		err = t.Reconcile.Client.Delete(context.TODO(),obj.Object)
 		if err != nil {
 			errs = append(errs, err)
+			log.Error(err,fmt.Sprintf("%s %s %s failed in %s",obj.Kubeapi.Kind,obj.Kubeapi.Name,t.TenancyOperator.ToString(),t.NamespacedChart.Namespace))
 		} else {
 			succObjs = append(succObjs, obj)
+			log.Info(fmt.Sprintf("%s %s %s success in %s",obj.Kubeapi.Kind,obj.Kubeapi.Name,t.TenancyOperator.ToString(),t.NamespacedChart.Namespace))
 		}
 	}
 	if len(errs) > 0 {

@@ -87,8 +87,8 @@ type PodStatus struct {
 type ReplicationControllerStatus struct {
 	ReplicationControllerName string `json:"replicationControllerName"`
 	ApiVersion string `json:"apiVersion"`
+	Kind string `json:"kind"`
 	Ready string `json:"ready"`
-	UnderChartName string `json:"underChartName"`
 }
 
 func (c *Controller) InitCheck() bool{
@@ -171,15 +171,26 @@ func (cs *ControllerStatus) RemoveNamespacedChart(chartName,namespace string) {
 	cs.UpdatedTenancies = newUpdatedTenancies
 }
 
-func (cs *ControllerStatus) UpdateNamespacedChartReplicationControllerStatusList(namespace string,list []ReplicationControllerStatus) {
-	cs.updateNamespacedChartForNewStatusTenancyFunc(namespace,func (st *StatusTenancy) StatusTenancy{
-		return StatusTenancy{
-			st.Namespace,
-			st.ChartMessages,
-			list,
-			st.PodStatusList,
+func (cs *ControllerStatus) AppendNamespacedChartReplicationControllerStatusList(namespace,rCName,apiVersion,kind string) {
+	for _, tenancy := range cs.UpdatedTenancies {
+		if tenancy.Namespace == namespace {
+			list := tenancy.ReplicationControllerStatusList
+			for _, status := range list {
+				if status.ReplicationControllerName == rCName && status.ApiVersion == apiVersion {
+					return
+				}
+			}
+			list = append(list,ReplicationControllerStatus{rCName,apiVersion,kind,""})
+			cs.updateNamespacedChartForNewStatusTenancyFunc(namespace,func (st *StatusTenancy) StatusTenancy{
+				return StatusTenancy{
+					st.Namespace,
+					st.ChartMessages,
+					list,
+					st.PodStatusList,
+				}
+			})
 		}
-	})
+	}
 }
 
 func (cs *ControllerStatus) UpdateNamespacedChartPodStatusList(namespace string,list []PodStatus) {

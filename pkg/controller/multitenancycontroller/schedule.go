@@ -14,15 +14,17 @@ func LoopSchedule(tenancyDirector TenancyDirector,tenancyWatcher TenancyWatcher)
 			switch tenancyExample.TenancyOperator {
 			case UPDATE:
 				objs:= recoverScheduleProcessor(tenancyDirector.UpdateSingleTenancyByConfigure,&tenancyExample)
-				recoverRCAndPodWatcherProcessor(tenancyWatcher.CreateTenancyPodStatusAndReplicationControllerStatus,objs,&tenancyExample)
+				recoverRCAndPodWatcherProcessor(tenancyWatcher.UpdateTenancyPodStatusAndReplicationControllerStatus,objs,&tenancyExample)
 			case CREATE:
 				objs:= recoverScheduleProcessor(tenancyDirector.CreateSingleTenancyByConfigure,&tenancyExample)
 				recoverNamespaceWatcherProcessor(tenancyWatcher.CreateTenancyNamespacesIfNeed,&tenancyExample)
-				recoverRCAndPodWatcherProcessor(tenancyWatcher.UpdateTenancyPodStatusAndReplicationControllerStatus,objs,&tenancyExample)
+				recoverRCAndPodWatcherProcessor(tenancyWatcher.CreateTenancyPodStatusAndReplicationControllerStatus,objs,&tenancyExample)
 			case DELETE:
 				objs:= recoverScheduleProcessor(tenancyDirector.DeleteSingleTenancyByConfigure,&tenancyExample)
 				recoverNamespaceWatcherProcessor(tenancyWatcher.DeleteTenancyNamespacesIfNeed,&tenancyExample)
 				recoverRCAndPodWatcherProcessor(tenancyWatcher.DeleteTenancyPodStatusAndReplicationControllerStatus,objs,&tenancyExample)
+			case INIT:
+				recoverNamespaceWatcherProcessor(tenancyWatcher.InitTenancyWatcher,&tenancyExample)
 			}
 		}
 	}()
@@ -59,7 +61,7 @@ func recoverScheduleProcessor(operatorSingleTenancyByConfigure func (*TenancyExa
 		if err := recover(); err != nil {
 			reqLogger.Error(fmt.Errorf("%s",err),"recover Err")
 
-			multiTenancyController,err := checkMultiTenancyController(t.Reconcile.Client,reqLogger)
+			multiTenancyController,err := CheckMultiTenancyController(t.Reconcile.Client,reqLogger)
 			if err != nil {
 				reqLogger.Error(err,"Write ErrorMessage Check Err")
 			}
@@ -71,7 +73,7 @@ func recoverScheduleProcessor(operatorSingleTenancyByConfigure func (*TenancyExa
 	reqLogger.Info(fmt.Sprintf("Start to %s",t.TenancyOperator.ToString()))
 	objs ,err := operatorSingleTenancyByConfigure(t)
 
-	multiTenancyController,err := checkMultiTenancyController(t.Reconcile.Client,reqLogger)
+	multiTenancyController,err := CheckMultiTenancyController(t.Reconcile.Client,reqLogger)
 	if err != nil {
 		reqLogger.Error(err,"Write ErrorMessage Check Err")
 	}
