@@ -10,6 +10,7 @@ import (
 
 var log = logf.Log.WithName("controller_multi_watcher")
 
+//Not thread safe
 var NamespaceMap = make(map[string]*NamespacedRC)
 
 type NamespacedRC struct {
@@ -65,46 +66,69 @@ func (w ReplicationControllerWatcher) InitTenancyWatcher(t *multitenancycontroll
 	}
 
 }
-
 func (w ReplicationControllerWatcher) CreateTenancyPodStatusAndReplicationControllerStatus(objs []multitenancycontroller.KubeObject, t *multitenancycontroller.TenancyExample) {
+	createOrDeleteRCStatus(objs, t)
+}
+
+func (w ReplicationControllerWatcher) DeleteTenancyPodStatusAndReplicationControllerStatus(objs []multitenancycontroller.KubeObject, t *multitenancycontroller.TenancyExample) {
+	createOrDeleteRCStatus(objs, t)
+}
+
+func createOrDeleteRCStatus(objs []multitenancycontroller.KubeObject, t *multitenancycontroller.TenancyExample) {
 	apis := getRCKubeapi(objs)
 	if NamespaceMap[t.NamespacedChart.Namespace] != nil {
 		m := NamespaceMap[t.NamespacedChart.Namespace].NamespacedRCMap
 		mtC := &v1alpha1.Controller{}
-		err := t.Reconcile.Client.Get(context.TODO(), t.NamespacedController,mtC)
+		err := t.Reconcile.Client.Get(context.TODO(), t.NamespacedController, mtC)
 
 		if err != nil {
-			log.Error(err,"Get Controller failed")
+			log.Error(err, "Get Controller failed")
 			return
 		}
 		for _, api := range apis {
-			nRCMap := m[ApiVersionRC{api.ApiVersion, api.Kind}]
-			if nRCMap == nil {
-				ctx := context.Background()
-				nRCMap = &NamespacedRCMap{&ctx,[]string{api.Name}}
-				//TODO register
-			} else {
-				rc := nRCMap.RCName
-				rc = append(rc, api.Name)
-				nRCMap.RCName = rc
+			switch t.TenancyOperator {
+			case multitenancycontroller.CREATE:
+				nRCMap := m[ApiVersionRC{api.ApiVersion, api.Kind}]
+				if nRCMap == nil {
+					ctx := context.Background()
+					nRCMap = &NamespacedRCMap{&ctx, []string{api.Name}}
+					//TODO register
+				} else {
+					rc := nRCMap.RCName
+					rc = append(rc, api.Name)
+					nRCMap.RCName = rc
+				}
+				//Append CRD Controller Status
+				mtC.Status.AppendNamespacedChartReplicationControllerStatusList(api.Namespace, api.Name, api.ApiVersion, api.Kind)
+			case multitenancycontroller.DELETE:
+				nRCMap := m[ApiVersionRC{api.ApiVersion, api.Kind}]
+				if nRCMap != nil {
+					for i, s := range nRCMap.RCName {
+						if api.Name == s {
+							list := append(nRCMap.RCName[:i], nRCMap.RCName[i+1:]...)
+							if len(list) == 0 {
+								if nRCMap.Ctx != nil {
+									context.WithCancel(*nRCMap.Ctx)
+								}
+								m[ApiVersionRC{api.ApiVersion, api.Kind}] = nil
+							} else {
+								m[ApiVersionRC{api.ApiVersion, api.Kind}].RCName = list
+							}
+						}
+					}
+				}
+				//Remove CRD Controller Status
+				mtC.Status.RemoveNamespacedChartReplicationControllerStatusListIfExist(api.Namespace, api.Name, api.ApiVersion, api.Kind)
 			}
-			//Append CRD Controller Status
-			mtC.Status.AppendNamespacedChartReplicationControllerStatusList(api.Namespace,api.Name,api.ApiVersion,api.Kind)
+
 		}
 		err = t.Reconcile.Client.Status().Update(context.TODO(), mtC)
 		if err != nil {
-			log.Error(err,"Update Controller failed")
+			log.Error(err, "Update Controller failed")
 		}
 	}
 }
 
-func (w ReplicationControllerWatcher) UpdateTenancyPodStatusAndReplicationControllerStatus(objs []multitenancycontroller.KubeObject, t *multitenancycontroller.TenancyExample) {
-
-}
-
-func (w ReplicationControllerWatcher) DeleteTenancyPodStatusAndReplicationControllerStatus(objs []multitenancycontroller.KubeObject, t *multitenancycontroller.TenancyExample) {
-
-}
 
 func (w ReplicationControllerWatcher) CreateTenancyNamespacesIfNeed(t *multitenancycontroller.TenancyExample) {
 	for _, namespace := range t.Namespaces {
@@ -127,9 +151,8 @@ func (w ReplicationControllerWatcher) DeleteTenancyNamespacesIfNeed(t *multitena
 		}
 		for _, s := range needDelete {
 			v := NamespaceMap[s]
-			pCtx := v.Ctx
-			if pCtx != nil {
-				(*pCtx).Done()
+			if v.Ctx != nil {
+				context.WithCancel(*v.Ctx)
 			}
 			NamespaceMap[s] = nil
 		}

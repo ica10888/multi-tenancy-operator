@@ -13,8 +13,7 @@ func LoopSchedule(tenancyDirector TenancyDirector,tenancyWatcher TenancyWatcher)
 			tenancyExample := <- TenancyQueue
 			switch tenancyExample.TenancyOperator {
 			case UPDATE:
-				objs:= recoverScheduleProcessor(tenancyDirector.UpdateSingleTenancyByConfigure,&tenancyExample)
-				recoverRCAndPodWatcherProcessor(tenancyWatcher.UpdateTenancyPodStatusAndReplicationControllerStatus,objs,&tenancyExample)
+				recoverScheduleProcessor(tenancyDirector.UpdateSingleTenancyByConfigure,&tenancyExample)
 			case CREATE:
 				objs:= recoverScheduleProcessor(tenancyDirector.CreateSingleTenancyByConfigure,&tenancyExample)
 				recoverNamespaceWatcherProcessor(tenancyWatcher.CreateTenancyNamespacesIfNeed,&tenancyExample)

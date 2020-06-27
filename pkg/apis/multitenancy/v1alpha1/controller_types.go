@@ -171,6 +171,28 @@ func (cs *ControllerStatus) RemoveNamespacedChart(chartName,namespace string) {
 	cs.UpdatedTenancies = newUpdatedTenancies
 }
 
+func (cs *ControllerStatus) RemoveNamespacedChartReplicationControllerStatusListIfExist(namespace,rCName,apiVersion,kind string) {
+	for _, tenancy := range cs.UpdatedTenancies {
+		if tenancy.Namespace == namespace {
+			list := tenancy.ReplicationControllerStatusList
+			for i, status := range list {
+				if status.ReplicationControllerName == rCName && status.ApiVersion == apiVersion && status.Kind == kind {
+					newList := append(tenancy.ReplicationControllerStatusList[:i], tenancy.ReplicationControllerStatusList[i+1:]...)
+					cs.updateNamespacedChartForNewStatusTenancyFunc(namespace,func (st *StatusTenancy) StatusTenancy{
+						return StatusTenancy{
+							st.Namespace,
+							st.ChartMessages,
+							newList,
+							st.PodStatusList,
+						}
+					})
+				}
+			}
+		}
+	}
+
+}
+
 func (cs *ControllerStatus) AppendNamespacedChartReplicationControllerStatusList(namespace,rCName,apiVersion,kind string) {
 	for _, tenancy := range cs.UpdatedTenancies {
 		if tenancy.Namespace == namespace {
