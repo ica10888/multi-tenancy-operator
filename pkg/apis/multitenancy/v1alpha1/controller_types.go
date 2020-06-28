@@ -285,6 +285,30 @@ func (cs *ControllerStatus) ApplyNamespacedChartPodStatus(namespace,podName,phas
 	return false
 }
 
+func (cs *ControllerStatus) RemoveNamespacedChartPodStatus(namespace,podName string) bool {
+	for _, tenancy := range cs.UpdatedTenancies {
+		if tenancy.Namespace == namespace {
+			for i, status := range tenancy.PodStatusList {
+				if status.PodName == podName {
+					list := append(tenancy.PodStatusList[:i],tenancy.PodStatusList[i+1:]...)
+					cs.updateNamespacedChartForNewStatusTenancyFunc(namespace,func (st *StatusTenancy) StatusTenancy{
+						return StatusTenancy{
+							st.Namespace,
+							st.ChartMessages,
+							st.ReplicationControllerStatusList,
+							list,
+						}
+					})
+					return true
+				}
+			}
+			break
+		}
+	}
+	return false
+}
+
+
 
 func (cs *ControllerStatus) updateNamespacedChartForNewStatusTenancyFunc(namespace string,f func (*StatusTenancy) StatusTenancy) {
 	needUpdate := false

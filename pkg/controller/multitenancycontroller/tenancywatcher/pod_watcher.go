@@ -82,6 +82,29 @@ func watcherPodDeletedProcess(obj *corev1.Pod, namespace string, c client.Client
 	}()
 	multitenancycontroller.Mutex.Lock()
 
+	podName := obj.Name
+	if NamespaceMap[namespace] != nil {
+	OUT:
+		for rc, rcMap := range NamespaceMap[namespace].NamespacedRCMap {
+			for _, rcName := range rcMap.RCName {
+				if podNameMatchesRC(rc.Kind,rcName,podName)	{
+					checkMTC, err := multitenancycontroller.CheckMultiTenancyController(c, log)
+					if err != nil {
+						log.Error(err, "Get Controller failed")
+						return
+					}
+					if checkMTC.Status.RemoveNamespacedChartPodStatus(namespace,podName) {
+						err = c.Status().Update(context.TODO(), checkMTC)
+						if err != nil {
+							log.Error(err, "Update Controller failed")
+							return
+						}
+					}
+					break OUT
+				}
+			}
 
+		}
+	}
 	return
 }
