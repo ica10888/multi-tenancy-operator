@@ -72,11 +72,6 @@ var localSpec = []v1alpha1.Tenancy{}
 
 var TenancyQueue = make(chan TenancyExample)
 
-var fmtAuthErr = `
-Unauthorized Error in %s, please execute cmd to solve:
-kubectl create namespace %s
-echo '{"apiVersion":"v1","kind":"ServiceAccount","metadata":{"name":"multi-tenancy-operator"}}' |  kubectl create -n %s -f -
-kubectl get clusterrolebinding multi-tenancy-operator -n %s -o json | jq '.subjects[ .subjects | length] +=  {"kind":"ServiceAccount","name": "multi-tenancy-operator","namespace": "%s"}'  | kubectl apply -n %s -f -`
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller

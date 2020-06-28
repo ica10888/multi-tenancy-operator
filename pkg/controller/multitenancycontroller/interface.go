@@ -28,7 +28,7 @@ func (k *Kubeapi) CreateUnstructured() *unstructured.Unstructured{
 	return u
 }
 
-type TenancyDirector interface {
+type TenancyScheduler interface {
 	CreateSingleTenancyByConfigure(t *TenancyExample) (objs []KubeObject,err error)
 	UpdateSingleTenancyByConfigure(t *TenancyExample) (objs []KubeObject,err error)
 	DeleteSingleTenancyByConfigure(t *TenancyExample) (objs []KubeObject,err error)

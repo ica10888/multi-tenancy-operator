@@ -1,4 +1,4 @@
-package tenancydirector
+package tenancyscheduler
 
 import (
 	"bytes"
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/ghodss/yaml"
 	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller"
-	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller/tenancydirector/helm"
+	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller/tenancyscheduler/helm"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,21 +19,21 @@ import (
 var log = logf.Log.WithName("tenancy_director")
 
 
-type ChartDirector struct {
+type ChartScheduler struct {
 	ChartHome string
 }
 
-func ChartDirectorFor() ChartDirector {
+func ChartSchedulerFor() ChartScheduler {
 	chartHome := os.Getenv("CHART_HOME")
 	if chartHome == ""{
 		chartHome = "/root/chart"
 	}
-	return ChartDirector{
+	return ChartScheduler{
 		ChartHome: chartHome,
 	}
 }
 
-func (a ChartDirector) CreateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
+func (a ChartScheduler) CreateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
 	releaseName := t.NamespacedChart.Namespace
 	if t.NamespacedChart.ReleaseName != "" {
 		releaseName = t.NamespacedChart.ReleaseName
@@ -49,7 +49,7 @@ func (a ChartDirector) CreateSingleTenancyByConfigure(t *multitenancycontroller.
 	return applyOrUpdate(t,conversionCheckDataList(data))
 }
 
-func (a ChartDirector) UpdateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
+func (a ChartScheduler) UpdateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
 	releaseName := t.NamespacedChart.Namespace
 	if t.NamespacedChart.ReleaseName != "" {
 		releaseName = t.NamespacedChart.ReleaseName
@@ -74,7 +74,7 @@ func (a ChartDirector) UpdateSingleTenancyByConfigure(t *multitenancycontroller.
 	return applyOrUpdate(t,updateDatas)
 }
 
-func (a ChartDirector) DeleteSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
+func (a ChartScheduler) DeleteSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
 	releaseName := t.NamespacedChart.Namespace
 	if t.NamespacedChart.ReleaseName != "" {
 		releaseName = t.NamespacedChart.ReleaseName
@@ -131,9 +131,7 @@ func applyOrUpdate(t *multitenancycontroller.TenancyExample, checkDatas []string
 			} else {
 				err = t.Reconcile.Client.Create(context.TODO(), obj.Object)
 				// TODO create namespace
-				if apierrs.IsUnauthorized(err){
-					return succObjs,err
-				}
+
 				if apierrs.IsAlreadyExists(err) {
 					log.Info("Is already exists, try to update")
 

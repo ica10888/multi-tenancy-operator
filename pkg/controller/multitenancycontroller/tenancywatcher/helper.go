@@ -2,7 +2,6 @@ package tenancywatcher
 
 import (
 	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller"
-	"strings"
 )
 
 func getRCKubeapi (objs []multitenancycontroller.KubeObject) (res []multitenancycontroller.Kubeapi){
@@ -15,20 +14,3 @@ func getRCKubeapi (objs []multitenancycontroller.KubeObject) (res []multitenancy
 	return
 }
 
-func separateReleaseChartName(releaseChartName string) (string,string){
-	strs := strings.Split(releaseChartName,"(")
-	if len(strs) == 1 {
-		return releaseChartName,""
-	} else {
-		return strs[0], strings.ReplaceAll(strs[1], ")", "")
-	}
-}
-
-
-func mergeReleaseChartName(chartName,releaseName string) string{
-	if releaseName == "" {
-		return  chartName
-	} else {
-		return chartName + "(" + releaseName + ")"
-	}
-}

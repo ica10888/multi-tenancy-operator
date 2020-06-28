@@ -1,4 +1,4 @@
-package tenancydirector
+package tenancyscheduler
 
 import (
 	"fmt"

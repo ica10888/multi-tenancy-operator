@@ -3,23 +3,22 @@ package multitenancycontroller
 import (
 	"context"
 	"fmt"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
 )
 
 //FIFO work queue
-func LoopSchedule(tenancyDirector TenancyDirector,tenancyWatcher TenancyWatcher){
+func LoopSchedule(tenancyScheduler TenancyScheduler,tenancyWatcher TenancyWatcher){
 	go func(){
 		for {
 			tenancyExample := <- TenancyQueue
 			switch tenancyExample.TenancyOperator {
 			case UPDATE:
-				recoverScheduleProcessor(tenancyDirector.UpdateSingleTenancyByConfigure,&tenancyExample)
+				recoverScheduleProcessor(tenancyScheduler.UpdateSingleTenancyByConfigure,&tenancyExample)
 			case CREATE:
-				objs:= recoverScheduleProcessor(tenancyDirector.CreateSingleTenancyByConfigure,&tenancyExample)
+				objs:= recoverScheduleProcessor(tenancyScheduler.CreateSingleTenancyByConfigure,&tenancyExample)
 				recoverNamespaceWatcherProcessor(tenancyWatcher.CreateTenancyNamespacesIfNeed,&tenancyExample)
 				recoverRCAndPodWatcherProcessor(tenancyWatcher.CreateTenancyPodStatusAndReplicationControllerStatus,objs,&tenancyExample)
 			case DELETE:
-				objs:= recoverScheduleProcessor(tenancyDirector.DeleteSingleTenancyByConfigure,&tenancyExample)
+				objs:= recoverScheduleProcessor(tenancyScheduler.DeleteSingleTenancyByConfigure,&tenancyExample)
 				recoverNamespaceWatcherProcessor(tenancyWatcher.DeleteTenancyNamespacesIfNeed,&tenancyExample)
 				recoverRCAndPodWatcherProcessor(tenancyWatcher.DeleteTenancyPodStatusAndReplicationControllerStatus,objs,&tenancyExample)
 			case INIT:
@@ -76,9 +75,7 @@ func recoverScheduleProcessor(operatorSingleTenancyByConfigure func (*TenancyExa
 	if err != nil {
 		reqLogger.Error(err,"Write ErrorMessage Check Err")
 	}
-	if apierrs.IsUnauthorized(err){
-		err = fmt.Errorf(fmtAuthErr,t.NamespacedChart.Namespace,t.NamespacedChart.Namespace,t.NamespacedChart.Namespace,multiTenancyController.Namespace,t.NamespacedChart.Namespace,multiTenancyController.Namespace)
-	}
+
 	chartName := mergeReleaseChartName(t.NamespacedChart.ChartName,t.NamespacedChart.ReleaseName)
 	multiTenancyController.Status.UpdateNamespacedChartErrorMessage(chartName,t.NamespacedChart.Namespace,err)
 	t.Reconcile.Client.Update(context.TODO(),multiTenancyController)
