@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,9 +16,25 @@ import (
 
 
 
+
 func appsV1DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
-	opts := v1.ListOptions{}
-	watcher, err := clientSet.AppsV1().Deployments(namespace).Watch(opts)
+
+	return watcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+		func(namespace string)(watch.Interface,error){
+			return clientSet.AppsV1().Deployments(namespace).Watch(v1.ListOptions{})
+		},
+		func(obj runtime.Object) string{
+			return obj.(*apps.Deployment).Name
+		},
+		func(obj runtime.Object) string{
+			return toReadyString(obj.(*apps.Deployment).Spec.Replicas, obj.(*apps.Deployment).Status.AvailableReplicas)
+		})
+}
+
+
+
+func watcher(c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC, watchFunc func(string)(watch.Interface,error),getRcNameFunc,getReadyFunc func(runtime.Object) string ) (err error) {
+	watcher, err := watchFunc(namespace)
 	if err != nil {
 		log.Error(err,fmt.Sprintf("Watch %s %s failed in %s",apiVersionRC.ApiVersion,apiVersionRC.Kind,namespace))
 		return
@@ -28,7 +45,7 @@ func appsV1DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,nsC
 		select {
 		case res := <- watcher.ResultChan():
 			obj := res.Object
-			watcherProcess(obj, namespace, apiVersionRC, c)
+			watcherProcess(obj, namespace, apiVersionRC, c, getRcNameFunc, getReadyFunc)
 		case <-(*nsCtx).Done():
 			break EXIT
 		case <-(*rcCtx).Done():
@@ -41,7 +58,7 @@ func appsV1DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,nsC
 
 
 
-func watcherProcess(obj runtime.Object, namespace string, apiVersionRC ApiVersionRC, c client.Client) (err error) {
+func watcherProcess(obj runtime.Object, namespace string, apiVersionRC ApiVersionRC, c client.Client,getRcNameFunc,getReadyFunc func(runtime.Object) string) (err error) {
 	defer func(){
 		multitenancycontroller.Mutex.Unlock()
 		if err := recover(); err != nil {
@@ -50,11 +67,11 @@ func watcherProcess(obj runtime.Object, namespace string, apiVersionRC ApiVersio
 	}()
 	multitenancycontroller.Mutex.Lock()
 
-	rcName := obj.(*apps.Deployment).Name
+	rcName := getRcNameFunc(obj)
 	if NamespaceMap[namespace] != nil && NamespaceMap[namespace].NamespacedRCMap[apiVersionRC] != nil {
 		for _, s := range NamespaceMap[namespace].NamespacedRCMap[apiVersionRC].RCName {
 			if rcName == s {
-				ready := toReadyString(obj.(*apps.Deployment).Spec.Replicas, obj.(*apps.Deployment).Status.AvailableReplicas)
+				ready := getReadyFunc(obj)
 				checkMTC, err := multitenancycontroller.CheckMultiTenancyController(c, log)
 				if err != nil {
 					log.Error(err, "Get Controller failed")
