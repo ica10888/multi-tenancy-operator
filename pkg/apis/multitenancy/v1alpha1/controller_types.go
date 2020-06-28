@@ -179,24 +179,25 @@ func (cs *ControllerStatus) UpdateNamespacedChartReplicationControllerStatusRead
 				if status.ReplicationControllerName == rCName && status.ApiVersion == apiVersion && status.Kind == kind {
 					if status.Ready == ready {
 						return false
+					} else {
+						newRC := ReplicationControllerStatus{rCName,apiVersion,kind,ready}
+						newList := append(append(tenancy.ReplicationControllerStatusList[:i], newRC), tenancy.ReplicationControllerStatusList[i+1:]...)
+						cs.updateNamespacedChartForNewStatusTenancyFunc(namespace,func (st *StatusTenancy) StatusTenancy{
+							return StatusTenancy{
+								st.Namespace,
+								st.ChartMessages,
+								newList,
+								st.PodStatusList,
+							}
+						})
+						return true
 					}
-					newRC := ReplicationControllerStatus{rCName,apiVersion,kind,ready}
-					newList := append(append(tenancy.ReplicationControllerStatusList[:i], newRC), tenancy.ReplicationControllerStatusList[i+1:]...)
-					cs.updateNamespacedChartForNewStatusTenancyFunc(namespace,func (st *StatusTenancy) StatusTenancy{
-						return StatusTenancy{
-							st.Namespace,
-							st.ChartMessages,
-							newList,
-							st.PodStatusList,
-						}
-					})
-					break
 				}
 			}
 			break
 		}
 	}
-	return true
+	return false
 }
 
 func (cs *ControllerStatus) RemoveNamespacedChartReplicationControllerStatusListIfExist(namespace,rCName,apiVersion,kind string) {
@@ -245,15 +246,43 @@ func (cs *ControllerStatus) AppendNamespacedChartReplicationControllerStatusList
 	}
 }
 
-func (cs *ControllerStatus) UpdateNamespacedChartPodStatusList(namespace string,list []PodStatus) {
-	cs.updateNamespacedChartForNewStatusTenancyFunc(namespace,func (st *StatusTenancy) StatusTenancy{
-		return StatusTenancy{
-			st.Namespace,
-			st.ChartMessages,
-			st.ReplicationControllerStatusList,
-			list,
+func (cs *ControllerStatus) ApplyNamespacedChartPodStatus(namespace,podName,phase string) bool {
+	for _, tenancy := range cs.UpdatedTenancies {
+		if tenancy.Namespace == namespace {
+			for i, status := range tenancy.PodStatusList {
+				if status.PodName == podName {
+					if status.Phase == phase {
+						return false
+					} else {
+						newPs := PodStatus{podName,phase}
+						list := append(append(tenancy.PodStatusList[:i], newPs),tenancy.PodStatusList[i+1:]...)
+						cs.updateNamespacedChartForNewStatusTenancyFunc(namespace,func (st *StatusTenancy) StatusTenancy{
+							return StatusTenancy{
+								st.Namespace,
+								st.ChartMessages,
+								st.ReplicationControllerStatusList,
+								list,
+							}
+						})
+						return true
+					}
+				}
+			}
+			//not exist
+			newPs := PodStatus{podName,phase}
+			list := append(tenancy.PodStatusList, newPs)
+			cs.updateNamespacedChartForNewStatusTenancyFunc(namespace,func (st *StatusTenancy) StatusTenancy{
+				return StatusTenancy{
+					st.Namespace,
+					st.ChartMessages,
+					st.ReplicationControllerStatusList,
+					list,
+				}
+			})
+			return true
 		}
-	})
+	}
+	return false
 }
 
 
