@@ -9,6 +9,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/api/apps/v1beta1"
+	"k8s.io/api/apps/v1beta2"
+    extensionsV1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/pkg/apis/apps"
 	"strconv"
@@ -53,8 +56,116 @@ func appsV1DaemonSetWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCt
 		})
 }
 
+func appsV1beta1DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+		func(namespace string)(watch.Interface,error){
+			return clientSet.AppsV1beta1().Deployments(namespace).Watch(v1.ListOptions{})
+		},
+		func(obj runtime.Object) string{
+			return obj.(*v1beta1.Deployment).Name
+		},
+		func(obj runtime.Object) string{
+			rep := int32(0)
+			if obj.(*v1beta1.Deployment).Spec.Replicas != nil {
+				rep = *obj.(*v1beta1.Deployment).Spec.Replicas
+			}
+			return toReadyString(rep, obj.(*v1beta1.Deployment).Status.AvailableReplicas)
+		})
+}
 
+func appsV1beta1StatefulSetWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+		func(namespace string)(watch.Interface,error){
+			return clientSet.AppsV1beta1().StatefulSets(namespace).Watch(v1.ListOptions{})
+		},
+		func(obj runtime.Object) string{
+			return obj.(*v1beta1.StatefulSet).Name
+		},
+		func(obj runtime.Object) string{
+			rep := int32(0)
+			if obj.(*v1beta1.StatefulSet).Spec.Replicas != nil {
+				rep = *obj.(*v1beta1.StatefulSet).Spec.Replicas
+			}
+			return toReadyString(rep, obj.(*v1beta1.StatefulSet).Status.ReadyReplicas)
+		})
+}
 
+func appsV1beta2DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+		func(namespace string)(watch.Interface,error){
+			return clientSet.AppsV1beta2().Deployments(namespace).Watch(v1.ListOptions{})
+		},
+		func(obj runtime.Object) string{
+			return obj.(*v1beta2.Deployment).Name
+		},
+		func(obj runtime.Object) string{
+			rep := int32(0)
+			if obj.(*v1beta2.Deployment).Spec.Replicas != nil {
+				rep = *obj.(*v1beta2.Deployment).Spec.Replicas
+			}
+			return toReadyString(rep, obj.(*v1beta2.Deployment).Status.AvailableReplicas)
+		})
+}
+
+func appsV1beta2StatefulSetWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+		func(namespace string)(watch.Interface,error){
+			return clientSet.AppsV1beta2().StatefulSets(namespace).Watch(v1.ListOptions{})
+		},
+		func(obj runtime.Object) string{
+			return obj.(*v1beta2.StatefulSet).Name
+		},
+		func(obj runtime.Object) string{
+			rep := int32(0)
+			if obj.(*v1beta2.StatefulSet).Spec.Replicas != nil {
+				rep = *obj.(*v1beta2.StatefulSet).Spec.Replicas
+			}
+			return toReadyString(rep, obj.(*v1beta2.StatefulSet).Status.ReadyReplicas)
+		})
+}
+
+func appsV1beta2DaemonSetWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+		func(namespace string)(watch.Interface,error){
+			return clientSet.AppsV1beta2().DaemonSets(namespace).Watch(v1.ListOptions{})
+		},
+		func(obj runtime.Object) string{
+			return obj.(*v1beta2.DaemonSet).Name
+		},
+		func(obj runtime.Object) string{
+			return toDaemonSetReadyString(obj.(*v1beta2.DaemonSet).Status.DesiredNumberScheduled,obj.(*v1beta2.DaemonSet).Status.CurrentNumberScheduled,obj.(*v1beta2.DaemonSet).Status.NumberReady,obj.(*v1beta2.DaemonSet).Status.UpdatedNumberScheduled,obj.(*v1beta2.DaemonSet).Status.NumberAvailable)
+		})
+}
+
+func extensionsV1beta1DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+		func(namespace string)(watch.Interface,error){
+			return clientSet.ExtensionsV1beta1().Deployments(namespace).Watch(v1.ListOptions{})
+		},
+		func(obj runtime.Object) string{
+			return obj.(*extensionsV1beta1.Deployment).Name
+		},
+		func(obj runtime.Object) string{
+			rep := int32(0)
+			if obj.(*extensionsV1beta1.Deployment).Spec.Replicas != nil {
+				rep = *obj.(*extensionsV1beta1.Deployment).Spec.Replicas
+			}
+			return toReadyString(rep, obj.(*extensionsV1beta1.Deployment).Status.AvailableReplicas)
+		})
+}
+
+func extensionsV1beta1DaemonSetWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+		func(namespace string)(watch.Interface,error){
+			return clientSet.ExtensionsV1beta1().DaemonSets(namespace).Watch(v1.ListOptions{})
+		},
+		func(obj runtime.Object) string{
+			return obj.(*extensionsV1beta1.DaemonSet).Name
+		},
+		func(obj runtime.Object) string{
+			return toDaemonSetReadyString(obj.(*extensionsV1beta1.DaemonSet).Status.DesiredNumberScheduled,obj.(*extensionsV1beta1.DaemonSet).Status.CurrentNumberScheduled,obj.(*extensionsV1beta1.DaemonSet).Status.NumberReady,obj.(*extensionsV1beta1.DaemonSet).Status.UpdatedNumberScheduled,obj.(*extensionsV1beta1.DaemonSet).Status.NumberAvailable)
+		})
+}
 
 func rcWatcher(c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC, watchFunc func(string)(watch.Interface,error),getRcNameFunc,getReadyFunc func(runtime.Object) string ) (err error) {
 	watcher, err := watchFunc(namespace)
