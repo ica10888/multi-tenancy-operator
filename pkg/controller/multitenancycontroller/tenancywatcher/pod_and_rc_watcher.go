@@ -14,12 +14,8 @@ import (
 	"strconv"
 )
 
-
-
-
 func appsV1DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
-
-	return watcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
 		func(namespace string)(watch.Interface,error){
 			return clientSet.AppsV1().Deployments(namespace).Watch(v1.ListOptions{})
 		},
@@ -31,9 +27,36 @@ func appsV1DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,nsC
 		})
 }
 
+func appsV1StatefulSetWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+		func(namespace string)(watch.Interface,error){
+			return clientSet.AppsV1().StatefulSets(namespace).Watch(v1.ListOptions{})
+		},
+		func(obj runtime.Object) string{
+			return obj.(*apps.StatefulSet).Name
+		},
+		func(obj runtime.Object) string{
+			return toReadyString(obj.(*apps.StatefulSet).Spec.Replicas, obj.(*apps.StatefulSet).Status.ReadyReplicas)
+		})
+}
+
+func appsV1DaemonSetWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+		func(namespace string)(watch.Interface,error){
+			return clientSet.AppsV1().DaemonSets(namespace).Watch(v1.ListOptions{})
+		},
+		func(obj runtime.Object) string{
+			return obj.(*apps.DaemonSet).Name
+		},
+		func(obj runtime.Object) string{
+			return toDaemonSetReadyString(obj.(*apps.DaemonSet).Status.DesiredNumberScheduled,obj.(*apps.DaemonSet).Status.CurrentNumberScheduled,obj.(*apps.DaemonSet).Status.NumberReady,obj.(*apps.DaemonSet).Status.UpdatedNumberScheduled,obj.(*apps.DaemonSet).Status.NumberAvailable)
+		})
+}
 
 
-func watcher(c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC, watchFunc func(string)(watch.Interface,error),getRcNameFunc,getReadyFunc func(runtime.Object) string ) (err error) {
+
+
+func rcWatcher(c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC, watchFunc func(string)(watch.Interface,error),getRcNameFunc,getReadyFunc func(runtime.Object) string ) (err error) {
 	watcher, err := watchFunc(namespace)
 	if err != nil {
 		log.Error(err,fmt.Sprintf("Watch %s %s failed in %s",apiVersionRC.ApiVersion,apiVersionRC.Kind,namespace))
@@ -77,16 +100,32 @@ func watcherProcess(obj runtime.Object, namespace string, apiVersionRC ApiVersio
 					log.Error(err, "Get Controller failed")
 					return
 				}
-				checkMTC.Status.UpdateNamespacedChartReplicationControllerStatusReady(namespace, rcName, apiVersionRC.ApiVersion, apiVersionRC.Kind, ready)
-				err = c.Status().Update(context.TODO(), checkMTC)
-				if err != nil {
-					log.Error(err, "Update Controller failed")
-					return
+				if checkMTC.Status.UpdateNamespacedChartReplicationControllerStatusReady(namespace, rcName, apiVersionRC.ApiVersion, apiVersionRC.Kind, ready) {
+					err = c.Status().Update(context.TODO(), checkMTC)
+					if err != nil {
+						log.Error(err, "Update Controller failed")
+						return
+					}
 				}
+				break
 			}
 		}
 	}
 	return
+}
+
+func toDaemonSetReadyString (desired,current,ready,update,ava int32) string {
+	res := "desired: " +
+		strconv.FormatInt(int64(desired),10) +
+		" current: " +
+		strconv.FormatInt(int64(current),10) +
+		" ready: " +
+		strconv.FormatInt(int64(ready),10) +
+		" up-to-date: " +
+		strconv.FormatInt(int64(update),10) +
+		" available: " +
+		strconv.FormatInt(int64(ava),10)
+	return res
 }
 
 func toReadyString (rep,avaRep int32) string {
