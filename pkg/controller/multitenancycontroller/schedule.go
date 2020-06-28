@@ -59,26 +59,26 @@ func recoverScheduleProcessor(operatorSingleTenancyByConfigure func (*TenancyExa
 		if err := recover(); err != nil {
 			reqLogger.Error(fmt.Errorf("%s",err),"recover Err")
 
-			multiTenancyController,err := CheckMultiTenancyController(t.Reconcile.Client,reqLogger)
+			mTC,err := CheckMultiTenancyController(t.Reconcile.Client,reqLogger)
 			if err != nil {
 				reqLogger.Error(err,"Write ErrorMessage Check Err")
 			}
 			chartName := mergeReleaseChartName(t.NamespacedChart.ChartName,t.NamespacedChart.ReleaseName)
-			multiTenancyController.Status.UpdateNamespacedChartErrorMessage(chartName,t.NamespacedChart.Namespace,fmt.Errorf("%s",err))
-			t.Reconcile.Client.Update(context.TODO(),multiTenancyController)
+			mTC.Status.UpdateNamespacedChartErrorMessage(chartName,t.NamespacedChart.Namespace,fmt.Errorf("%s",err))
+			t.Reconcile.Client.Update(context.TODO(),mTC)
 		}
 	}()
 	reqLogger.Info(fmt.Sprintf("Start to %s",t.TenancyOperator.ToString()))
 	objs ,err := operatorSingleTenancyByConfigure(t)
 
-	multiTenancyController,err := CheckMultiTenancyController(t.Reconcile.Client,reqLogger)
+	mTC,err := CheckMultiTenancyController(t.Reconcile.Client,reqLogger)
 	if err != nil {
 		reqLogger.Error(err,"Write ErrorMessage Check Err")
 	}
 
 	chartName := mergeReleaseChartName(t.NamespacedChart.ChartName,t.NamespacedChart.ReleaseName)
-	multiTenancyController.Status.UpdateNamespacedChartErrorMessage(chartName,t.NamespacedChart.Namespace,err)
-	t.Reconcile.Client.Update(context.TODO(),multiTenancyController)
+	mTC.Status.UpdateNamespacedChartErrorMessage(chartName,t.NamespacedChart.Namespace,err)
+	t.Reconcile.Client.Update(context.TODO(),mTC)
 
 	return
 }

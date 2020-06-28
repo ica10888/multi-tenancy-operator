@@ -259,13 +259,13 @@ func addTenancyExampleList(checkMTC *v1alpha1.Controller, err error, r *Reconcil
 }
 
 func CheckMultiTenancyController(c client.Client, reqLogger logr.Logger) (*v1alpha1.Controller,error){
-	multiTenancyControllerList := &v1alpha1.ControllerList{}
-	multiTenancyController := &v1alpha1.Controller{}
+	mTCList := &v1alpha1.ControllerList{}
+	mTC := &v1alpha1.Controller{}
 
 	listOpts := []client.ListOption{
 		client.InNamespace(metav1.NamespaceAll),
 	}
-	err := c.List(context.TODO(),multiTenancyControllerList,listOpts...)
+	err := c.List(context.TODO(),mTCList,listOpts...)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			reqLogger.Info("multiTenancyController resource not found. Ignoring since object must be deleted")
@@ -276,10 +276,10 @@ func CheckMultiTenancyController(c client.Client, reqLogger logr.Logger) (*v1alp
 	}
 
 	//multiTenancyController can not exist more than one at same time
-	if len(multiTenancyControllerList.Items) >= 2 {
+	if len(mTCList.Items) >= 2 {
 		oldestController := &v1alpha1.Controller{}
 		var unixNano int64 =math.MinInt64
-		for _, item := range multiTenancyControllerList.Items {
+		for _, item := range mTCList.Items {
 			if item.ObjectMeta.CreationTimestamp.UnixNano() > unixNano {
 				oldestController = &item
 			} else {
@@ -291,7 +291,7 @@ func CheckMultiTenancyController(c client.Client, reqLogger logr.Logger) (*v1alp
 		return nil, err
 	}
 
-	multiTenancyController = &multiTenancyControllerList.Items[0]
+	mTC = &mTCList.Items[0]
 
-	return multiTenancyController,nil
+	return mTC,nil
 }
