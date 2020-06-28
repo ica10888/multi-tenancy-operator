@@ -62,7 +62,7 @@ func (w ReplicationControllerWatcher) InitTenancyWatcher(t *multitenancycontroll
 				}
 			}
 		}
-
+		//TODO pod register
 	}
 
 }
@@ -135,6 +135,7 @@ func (w ReplicationControllerWatcher) CreateTenancyNamespacesIfNeed(t *multitena
 		if NamespaceMap[namespace] == nil {
 			ctx := context.Background()
 			NamespaceMap[namespace] = &NamespacedRC{&ctx,make(map[ApiVersionRC]*NamespacedRCMap)}
+			//TODO pod register
 		}
 	}
 
