@@ -45,36 +45,40 @@ func (w ReplicationControllerWatcher) InitTenancyWatcher(t *multitenancycontroll
 		panic(err)
 	}
 
-	for _, t := range checkMTC.Status.UpdatedTenancies {
-		nRC := NamespaceMap[t.Namespace]
+	for _, ten := range checkMTC.Status.UpdatedTenancies {
+		nRC := NamespaceMap[ten.Namespace]
 		nsCtx := context.Background()
 		nRC = &NamespacedRC{&nsCtx,nil}
-		if len(t.ReplicationControllerStatusList) > 0 {
+		if len(ten.ReplicationControllerStatusList) > 0 {
 			nRC.NamespacedRCMap = make(map[ApiVersionRC]*NamespacedRCMap)
-			for _, s := range t.ReplicationControllerStatusList {
+			for _, s := range ten.ReplicationControllerStatusList {
 				if nRC.NamespacedRCMap[ApiVersionRC{s.ApiVersion,s.Kind}] == nil {
 					ctx := context.Background()
 					nRC.NamespacedRCMap[ApiVersionRC{s.ApiVersion,s.Kind}] = &NamespacedRCMap{ &ctx,[]string{s.ReplicationControllerName}}
-					//TODO register
+					//RC register
+					replicationControllerRegister(w.ClientSet,t.Reconcile.Client,ten.Namespace,ApiVersionRC{s.ApiVersion,s.Kind})
 				} else {
 					list := append(nRC.NamespacedRCMap[ApiVersionRC{s.ApiVersion, s.Kind}].RCName,s.ReplicationControllerName)
 					nRC.NamespacedRCMap[ApiVersionRC{s.ApiVersion,s.Kind}].RCName = list
 				}
 			}
 		}
-		//TODO pod register
+		//All pod register
+		for ns, _ := range NamespaceMap {
+			podRegister(w.ClientSet,t.Reconcile.Client,ns)
+		}
 	}
 
 }
 func (w ReplicationControllerWatcher) CreateTenancyPodStatusAndReplicationControllerStatus(objs []multitenancycontroller.KubeObject, t *multitenancycontroller.TenancyExample) {
-	createOrDeleteRCStatus(objs, t)
+	createOrDeleteRCStatus(w.ClientSet,objs, t)
 }
 
 func (w ReplicationControllerWatcher) DeleteTenancyPodStatusAndReplicationControllerStatus(objs []multitenancycontroller.KubeObject, t *multitenancycontroller.TenancyExample) {
-	createOrDeleteRCStatus(objs, t)
+	createOrDeleteRCStatus(w.ClientSet,objs, t)
 }
 
-func createOrDeleteRCStatus(objs []multitenancycontroller.KubeObject, t *multitenancycontroller.TenancyExample) {
+func createOrDeleteRCStatus(clientSet *kubernetes.Clientset, objs []multitenancycontroller.KubeObject, t *multitenancycontroller.TenancyExample) {
 	apis := getRCKubeapi(objs)
 	if NamespaceMap[t.NamespacedChart.Namespace] != nil {
 		m := NamespaceMap[t.NamespacedChart.Namespace].NamespacedRCMap
@@ -92,7 +96,8 @@ func createOrDeleteRCStatus(objs []multitenancycontroller.KubeObject, t *multite
 				if nRCMap == nil {
 					ctx := context.Background()
 					nRCMap = &NamespacedRCMap{&ctx, []string{api.Name}}
-					//TODO register
+					//RC register
+					replicationControllerRegister(clientSet,t.Reconcile.Client,t.NamespacedChart.Namespace,ApiVersionRC{api.ApiVersion,api.Kind})
 				} else {
 					rc := nRCMap.RCName
 					rc = append(rc, api.Name)
@@ -135,7 +140,8 @@ func (w ReplicationControllerWatcher) CreateTenancyNamespacesIfNeed(t *multitena
 		if NamespaceMap[namespace] == nil {
 			ctx := context.Background()
 			NamespaceMap[namespace] = &NamespacedRC{&ctx,make(map[ApiVersionRC]*NamespacedRCMap)}
-			//TODO pod register
+			//Pod register
+			podRegister(w.ClientSet,t.Reconcile.Client,namespace)
 		}
 	}
 

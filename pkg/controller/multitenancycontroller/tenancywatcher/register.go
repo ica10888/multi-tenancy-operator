@@ -33,3 +33,8 @@ func replicationControllerRegister(clientSet *kubernetes.Clientset,c client.Clie
 
 }
 
+func podRegister(clientSet *kubernetes.Clientset,c client.Client,namespace string){
+	if NamespaceMap[namespace] != nil {
+		go podWatcher(clientSet,c,NamespaceMap[namespace].Ctx,namespace)
+	}
+}
