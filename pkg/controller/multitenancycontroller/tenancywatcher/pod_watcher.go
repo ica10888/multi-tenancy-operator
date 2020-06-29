@@ -47,7 +47,6 @@ func watcherPodProcess(obj *corev1.Pod, namespace string, c client.Client) (err 
 
 	podName := obj.Name
 	if NamespaceMap[namespace] != nil {
-		OUT:
 		for rc, rcMap := range NamespaceMap[namespace].NamespacedRCMap {
 			for _, rcName := range rcMap.RCName {
 				if podNameMatchesRC(rc.Kind,rcName,podName)	{
@@ -64,7 +63,7 @@ func watcherPodProcess(obj *corev1.Pod, namespace string, c client.Client) (err 
 							return
 						}
 					}
-					break OUT
+					return
 				}
 			}
 

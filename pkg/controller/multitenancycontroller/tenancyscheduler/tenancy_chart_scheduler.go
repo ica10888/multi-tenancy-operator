@@ -7,7 +7,9 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller"
 	"github.com/ica10888/multi-tenancy-operator/pkg/controller/multitenancycontroller/tenancyscheduler/helm"
+	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -130,7 +132,18 @@ func applyOrUpdate(t *multitenancycontroller.TenancyExample, checkDatas []string
 				errs = append(errs, err)
 			} else {
 				err = t.Reconcile.Client.Create(context.TODO(), obj.Object)
-				// TODO create namespace
+
+				//Create namespace if not exist
+				if apierrs.IsNotFound(err) {
+					ns := corev1.Namespace{TypeMeta:v1.TypeMeta{"v1","Namespace"},ObjectMeta: v1.ObjectMeta{Name: t.NamespacedChart.Namespace}}
+					err = t.Reconcile.Client.Create(context.TODO(), &ns)
+					if err != nil {
+						return succObjs, err
+					} else {
+						//Retry
+						err = t.Reconcile.Client.Create(context.TODO(), obj.Object)
+					}
+				}
 
 				if apierrs.IsAlreadyExists(err) {
 					log.Info("Is already exists, try to update")

@@ -14,6 +14,7 @@ require (
 	github.com/technosophos/moniker v0.0.0-20180509230615-a5dbd03a2245 // indirect
 	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.17.4
+	k8s.io/apiextensions-apiserver v0.17.4
 	k8s.io/apimachinery v0.17.4
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/helm v2.16.3+incompatible
