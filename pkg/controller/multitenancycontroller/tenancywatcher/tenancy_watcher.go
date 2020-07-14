@@ -14,12 +14,14 @@ var log = logf.Log.WithName("controller_multi_watcher")
 var NamespaceMap = make(map[string]*NamespacedRC)
 
 type NamespacedRC struct {
-	Ctx *context.Context
+	Ctx context.Context
+	CancelFunc context.CancelFunc
 	NamespacedRCMap  map[ApiVersionRC]*NamespacedRCMap
 }
 
 type NamespacedRCMap struct {
-	Ctx *context.Context
+	Ctx context.Context
+	CancelFunc context.CancelFunc
 	RCName []string
 }
 
@@ -47,14 +49,14 @@ func (w ReplicationControllerWatcher) InitTenancyWatcher(t *multitenancycontroll
 
 	for _, ten := range checkMTC.Status.UpdatedTenancies {
 		nRC := NamespaceMap[ten.Namespace]
-		nsCtx := context.Background()
-		nRC = &NamespacedRC{&nsCtx,nil}
+		nsCtx, nsCancel := context.WithCancel(context.Background())
+		nRC = &NamespacedRC{nsCtx,nsCancel,nil}
 		if len(ten.ReplicationControllerStatusList) > 0 {
 			nRC.NamespacedRCMap = make(map[ApiVersionRC]*NamespacedRCMap)
 			for _, s := range ten.ReplicationControllerStatusList {
 				if nRC.NamespacedRCMap[ApiVersionRC{s.ApiVersion,s.Kind}] == nil {
-					ctx := context.Background()
-					nRC.NamespacedRCMap[ApiVersionRC{s.ApiVersion,s.Kind}] = &NamespacedRCMap{ &ctx,[]string{s.ReplicationControllerName}}
+					ctx ,cancel := context.WithCancel(nsCtx)
+					nRC.NamespacedRCMap[ApiVersionRC{s.ApiVersion,s.Kind}] = &NamespacedRCMap{ ctx,cancel,[]string{s.ReplicationControllerName}}
 					//RC register
 					replicationControllerRegister(w.ClientSet,t.Reconcile.Client,ten.Namespace,ApiVersionRC{s.ApiVersion,s.Kind})
 				} else {
@@ -94,8 +96,8 @@ func createOrDeleteRCStatus(clientSet *kubernetes.Clientset, objs []multitenancy
 			case multitenancycontroller.CREATE:
 				nRCMap := m[ApiVersionRC{api.ApiVersion, api.Kind}]
 				if nRCMap == nil {
-					ctx := context.Background()
-					nRCMap = &NamespacedRCMap{&ctx, []string{api.Name}}
+					ctx ,cancel := context.WithCancel(NamespaceMap[t.NamespacedChart.Namespace].Ctx)
+					nRCMap = &NamespacedRCMap{ctx,cancel, []string{api.Name}}
 					//RC register
 					replicationControllerRegister(clientSet,t.Reconcile.Client,t.NamespacedChart.Namespace,ApiVersionRC{api.ApiVersion,api.Kind})
 				} else {
@@ -112,9 +114,7 @@ func createOrDeleteRCStatus(clientSet *kubernetes.Clientset, objs []multitenancy
 						if api.Name == s {
 							list := append(nRCMap.RCName[:i], nRCMap.RCName[i+1:]...)
 							if len(list) == 0 {
-								if nRCMap.Ctx != nil {
-									context.WithCancel(*nRCMap.Ctx)
-								}
+								nRCMap.CancelFunc()
 								m[ApiVersionRC{api.ApiVersion, api.Kind}] = nil
 							} else {
 								m[ApiVersionRC{api.ApiVersion, api.Kind}].RCName = list
@@ -138,8 +138,8 @@ func createOrDeleteRCStatus(clientSet *kubernetes.Clientset, objs []multitenancy
 func (w ReplicationControllerWatcher) CreateTenancyNamespacesIfNeed(t *multitenancycontroller.TenancyExample) {
 	for _, namespace := range t.Namespaces {
 		if NamespaceMap[namespace] == nil {
-			ctx := context.Background()
-			NamespaceMap[namespace] = &NamespacedRC{&ctx,make(map[ApiVersionRC]*NamespacedRCMap)}
+			ctx ,cancel := context.WithCancel(context.Background())
+			NamespaceMap[namespace] = &NamespacedRC{ctx ,cancel,make(map[ApiVersionRC]*NamespacedRCMap)}
 			//Pod register
 			podRegister(w.ClientSet,t.Reconcile.Client,namespace)
 		}
@@ -158,9 +158,7 @@ func (w ReplicationControllerWatcher) DeleteTenancyNamespacesIfNeed(t *multitena
 		}
 		for _, s := range needDelete {
 			v := NamespaceMap[s]
-			if v.Ctx != nil {
-				context.WithCancel(*v.Ctx)
-			}
+			v.CancelFunc()
 			NamespaceMap[s] = nil
 		}
 	}

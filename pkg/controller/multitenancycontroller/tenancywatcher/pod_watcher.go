@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func podWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx *context.Context,namespace string) (err error) {
+func podWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx context.Context,namespace string) (err error) {
 	watcher, err := clientSet.CoreV1().Pods(namespace).Watch(v1.ListOptions{})
 	if err != nil {
 		log.Error(err,fmt.Sprintf("Watch pod failed in %s",namespace))
@@ -28,7 +28,7 @@ func podWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx *context.C
 			} else {
 				watcherPodProcess(obj, namespace, c)
 			}
-		case <-(*nsCtx).Done():
+		case <- nsCtx.Done():
 			break EXIT
 		}
 	}

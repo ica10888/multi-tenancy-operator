@@ -17,8 +17,8 @@ import (
 	"strconv"
 )
 
-func appsV1DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
-	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+func appsV1DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,rcCtx context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,rcCtx,namespace,apiVersionRC,
 		func(namespace string)(watch.Interface,error){
 			return clientSet.AppsV1().Deployments(namespace).Watch(v1.ListOptions{})
 		},
@@ -30,8 +30,8 @@ func appsV1DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,nsC
 		})
 }
 
-func appsV1StatefulSetWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
-	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+func appsV1StatefulSetWatcher(clientSet *kubernetes.Clientset,c client.Client,rcCtx context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,rcCtx,namespace,apiVersionRC,
 		func(namespace string)(watch.Interface,error){
 			return clientSet.AppsV1().StatefulSets(namespace).Watch(v1.ListOptions{})
 		},
@@ -43,8 +43,8 @@ func appsV1StatefulSetWatcher(clientSet *kubernetes.Clientset,c client.Client,ns
 		})
 }
 
-func appsV1DaemonSetWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
-	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+func appsV1DaemonSetWatcher(clientSet *kubernetes.Clientset,c client.Client,rcCtx context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,rcCtx,namespace,apiVersionRC,
 		func(namespace string)(watch.Interface,error){
 			return clientSet.AppsV1().DaemonSets(namespace).Watch(v1.ListOptions{})
 		},
@@ -56,8 +56,8 @@ func appsV1DaemonSetWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCt
 		})
 }
 
-func appsV1beta1DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
-	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+func appsV1beta1DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,rcCtx context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,rcCtx,namespace,apiVersionRC,
 		func(namespace string)(watch.Interface,error){
 			return clientSet.AppsV1beta1().Deployments(namespace).Watch(v1.ListOptions{})
 		},
@@ -73,8 +73,8 @@ func appsV1beta1DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Clien
 		})
 }
 
-func appsV1beta1StatefulSetWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
-	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+func appsV1beta1StatefulSetWatcher(clientSet *kubernetes.Clientset,c client.Client,rcCtx context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,rcCtx,namespace,apiVersionRC,
 		func(namespace string)(watch.Interface,error){
 			return clientSet.AppsV1beta1().StatefulSets(namespace).Watch(v1.ListOptions{})
 		},
@@ -90,8 +90,8 @@ func appsV1beta1StatefulSetWatcher(clientSet *kubernetes.Clientset,c client.Clie
 		})
 }
 
-func appsV1beta2DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
-	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+func appsV1beta2DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,rcCtx context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,rcCtx,namespace,apiVersionRC,
 		func(namespace string)(watch.Interface,error){
 			return clientSet.AppsV1beta2().Deployments(namespace).Watch(v1.ListOptions{})
 		},
@@ -107,8 +107,8 @@ func appsV1beta2DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Clien
 		})
 }
 
-func appsV1beta2StatefulSetWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
-	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+func appsV1beta2StatefulSetWatcher(clientSet *kubernetes.Clientset,c client.Client,rcCtx context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,rcCtx,namespace,apiVersionRC,
 		func(namespace string)(watch.Interface,error){
 			return clientSet.AppsV1beta2().StatefulSets(namespace).Watch(v1.ListOptions{})
 		},
@@ -124,8 +124,8 @@ func appsV1beta2StatefulSetWatcher(clientSet *kubernetes.Clientset,c client.Clie
 		})
 }
 
-func appsV1beta2DaemonSetWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
-	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+func appsV1beta2DaemonSetWatcher(clientSet *kubernetes.Clientset,c client.Client,rcCtx context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,rcCtx,namespace,apiVersionRC,
 		func(namespace string)(watch.Interface,error){
 			return clientSet.AppsV1beta2().DaemonSets(namespace).Watch(v1.ListOptions{})
 		},
@@ -137,8 +137,8 @@ func appsV1beta2DaemonSetWatcher(clientSet *kubernetes.Clientset,c client.Client
 		})
 }
 
-func extensionsV1beta1DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
-	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+func extensionsV1beta1DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,rcCtx context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,rcCtx,namespace,apiVersionRC,
 		func(namespace string)(watch.Interface,error){
 			return clientSet.ExtensionsV1beta1().Deployments(namespace).Watch(v1.ListOptions{})
 		},
@@ -154,8 +154,8 @@ func extensionsV1beta1DeploymentWatcher(clientSet *kubernetes.Clientset,c client
 		})
 }
 
-func extensionsV1beta1DaemonSetWatcher(clientSet *kubernetes.Clientset,c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
-	return rcWatcher(c,nsCtx,rcCtx,namespace,apiVersionRC,
+func extensionsV1beta1DaemonSetWatcher(clientSet *kubernetes.Clientset,c client.Client,rcCtx context.Context,namespace string,apiVersionRC ApiVersionRC) (err error) {
+	return rcWatcher(c,rcCtx,namespace,apiVersionRC,
 		func(namespace string)(watch.Interface,error){
 			return clientSet.ExtensionsV1beta1().DaemonSets(namespace).Watch(v1.ListOptions{})
 		},
@@ -167,7 +167,7 @@ func extensionsV1beta1DaemonSetWatcher(clientSet *kubernetes.Clientset,c client.
 		})
 }
 
-func rcWatcher(c client.Client,nsCtx,rcCtx *context.Context,namespace string,apiVersionRC ApiVersionRC, watchFunc func(string)(watch.Interface,error),getRcNameFunc,getReadyFunc func(runtime.Object) string ) (err error) {
+func rcWatcher(c client.Client,rcCtx context.Context,namespace string,apiVersionRC ApiVersionRC, watchFunc func(string)(watch.Interface,error),getRcNameFunc,getReadyFunc func(runtime.Object) string ) (err error) {
 	watcher, err := watchFunc(namespace)
 	if err != nil {
 		log.Error(err,fmt.Sprintf("Watch %s %s failed in %s",apiVersionRC.ApiVersion,apiVersionRC.Kind,namespace))
@@ -180,9 +180,7 @@ func rcWatcher(c client.Client,nsCtx,rcCtx *context.Context,namespace string,api
 		case res := <- watcher.ResultChan():
 			obj := res.Object
 			watcherProcess(obj, namespace, apiVersionRC, c, getRcNameFunc, getReadyFunc)
-		case <-(*nsCtx).Done():
-			break EXIT
-		case <-(*rcCtx).Done():
+		case <- rcCtx.Done():
 			break EXIT
 		}
 	}
