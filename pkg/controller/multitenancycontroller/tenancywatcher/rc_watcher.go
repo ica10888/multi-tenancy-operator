@@ -207,13 +207,13 @@ func watcherProcess(obj runtime.Object, namespace string, apiVersionRC ApiVersio
 				checkMTC, err := multitenancycontroller.CheckMultiTenancyController(c, log)
 				if err != nil {
 					log.Error(err, "Get Controller failed")
-					return
+					return err
 				}
 				if checkMTC.Status.UpdateNamespacedChartReplicationControllerStatusReady(namespace, rcName, apiVersionRC.ApiVersion, apiVersionRC.Kind, ready) {
 					err = c.Status().Update(context.TODO(), checkMTC)
 					if err != nil {
 						log.Error(err, "Update Controller failed")
-						return
+						return err
 					}
 				}
 				break

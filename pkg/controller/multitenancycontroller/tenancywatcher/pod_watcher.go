@@ -53,17 +53,17 @@ func watcherPodProcess(obj *corev1.Pod, namespace string, c client.Client) (err 
 					checkMTC, err := multitenancycontroller.CheckMultiTenancyController(c, log)
 					if err != nil {
 						log.Error(err, "Get Controller failed")
-						return
+						return err
 					}
 					phase := getPhase(obj)
 					if checkMTC.Status.ApplyNamespacedChartPodStatus(namespace,podName,phase) {
 						err = c.Status().Update(context.TODO(), checkMTC)
 						if err != nil {
 							log.Error(err, "Update Controller failed")
-							return
+							return err
 						}
 					}
-					return
+					return err
 				}
 			}
 
@@ -90,13 +90,13 @@ func watcherPodDeletedProcess(obj *corev1.Pod, namespace string, c client.Client
 					checkMTC, err := multitenancycontroller.CheckMultiTenancyController(c, log)
 					if err != nil {
 						log.Error(err, "Get Controller failed")
-						return
+						return err
 					}
 					if checkMTC.Status.RemoveNamespacedChartPodStatus(namespace,podName) {
 						err = c.Status().Update(context.TODO(), checkMTC)
 						if err != nil {
 							log.Error(err, "Update Controller failed")
-							return
+							return err
 						}
 					}
 					break OUT
