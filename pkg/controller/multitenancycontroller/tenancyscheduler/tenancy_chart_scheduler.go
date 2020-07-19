@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
-var log = logf.Log.WithName("tenancy_director")
+var log = logf.Log.WithName("tenancy_scheduler")
 
 
 type ChartScheduler struct {

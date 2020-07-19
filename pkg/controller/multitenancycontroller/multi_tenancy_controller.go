@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/rest"
 	"math"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -85,7 +86,7 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 
-	return &ReconcileMultiTenancyController{Client: mgr.GetClient(), Scheme: mgr.GetScheme()}
+	return &ReconcileMultiTenancyController{Client: mgr.GetClient(), Scheme: mgr.GetScheme() ,Config: mgr.GetConfig()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -118,6 +119,7 @@ type ReconcileMultiTenancyController struct {
 	// that reads objects from the cache and writes to the apiserver
 	Client client.Client
 	Scheme *runtime.Scheme
+	Config *rest.Config
 }
 
 

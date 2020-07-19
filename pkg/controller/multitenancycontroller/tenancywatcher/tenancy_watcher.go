@@ -47,21 +47,24 @@ func (w ReplicationControllerWatcher) InitTenancyWatcher(t *multitenancycontroll
 		panic(err)
 	}
 
+	w.ClientSet, err = kubernetes.NewForConfig(t.Reconcile.Config)
+	if err != nil {
+		panic(err)
+	}
 	for _, ten := range checkMTC.Status.UpdatedTenancies {
-		nRC := NamespaceMap[ten.Namespace]
 		nsCtx, nsCancel := context.WithCancel(context.Background())
-		nRC = &NamespacedRC{nsCtx,nsCancel,nil}
+		NamespaceMap[ten.Namespace] = &NamespacedRC{nsCtx,nsCancel,nil}
 		if len(ten.ReplicationControllerStatusList) > 0 {
-			nRC.NamespacedRCMap = make(map[ApiVersionRC]*NamespacedRCMap)
+			NamespaceMap[ten.Namespace].NamespacedRCMap = make(map[ApiVersionRC]*NamespacedRCMap)
 			for _, s := range ten.ReplicationControllerStatusList {
-				if nRC.NamespacedRCMap[ApiVersionRC{s.ApiVersion,s.Kind}] == nil {
+				if NamespaceMap[ten.Namespace].NamespacedRCMap[ApiVersionRC{s.ApiVersion,s.Kind}] == nil {
 					ctx ,cancel := context.WithCancel(nsCtx)
-					nRC.NamespacedRCMap[ApiVersionRC{s.ApiVersion,s.Kind}] = &NamespacedRCMap{ ctx,cancel,[]string{s.ReplicationControllerName}}
+					NamespaceMap[ten.Namespace].NamespacedRCMap[ApiVersionRC{s.ApiVersion,s.Kind}] = &NamespacedRCMap{ ctx,cancel,[]string{s.ReplicationControllerName}}
 					//RC register
 					replicationControllerRegister(w.ClientSet,t.Reconcile.Client,ten.Namespace,ApiVersionRC{s.ApiVersion,s.Kind})
 				} else {
-					list := append(nRC.NamespacedRCMap[ApiVersionRC{s.ApiVersion, s.Kind}].RCName,s.ReplicationControllerName)
-					nRC.NamespacedRCMap[ApiVersionRC{s.ApiVersion,s.Kind}].RCName = list
+					list := append(NamespaceMap[ten.Namespace].NamespacedRCMap[ApiVersionRC{s.ApiVersion, s.Kind}].RCName,s.ReplicationControllerName)
+					NamespaceMap[ten.Namespace].NamespacedRCMap[ApiVersionRC{s.ApiVersion,s.Kind}].RCName = list
 				}
 			}
 		}
@@ -94,16 +97,15 @@ func createOrDeleteRCStatus(clientSet *kubernetes.Clientset, objs []multitenancy
 		for _, api := range apis {
 			switch t.TenancyOperator {
 			case multitenancycontroller.CREATE:
-				nRCMap := m[ApiVersionRC{api.ApiVersion, api.Kind}]
-				if nRCMap == nil {
+				if m[ApiVersionRC{api.ApiVersion, api.Kind}] == nil {
 					ctx ,cancel := context.WithCancel(NamespaceMap[t.NamespacedChart.Namespace].Ctx)
-					nRCMap = &NamespacedRCMap{ctx,cancel, []string{api.Name}}
+					m[ApiVersionRC{api.ApiVersion, api.Kind}] = &NamespacedRCMap{ctx,cancel, []string{api.Name}}
 					//RC register
 					replicationControllerRegister(clientSet,t.Reconcile.Client,t.NamespacedChart.Namespace,ApiVersionRC{api.ApiVersion,api.Kind})
 				} else {
-					rc := nRCMap.RCName
+					rc := m[ApiVersionRC{api.ApiVersion, api.Kind}].RCName
 					rc = append(rc, api.Name)
-					nRCMap.RCName = rc
+					m[ApiVersionRC{api.ApiVersion, api.Kind}].RCName = rc
 				}
 				//Append CRD Controller Status
 				mtC.Status.AppendNamespacedChartReplicationControllerStatusList(api.Namespace, api.Name, api.ApiVersion, api.Kind)
