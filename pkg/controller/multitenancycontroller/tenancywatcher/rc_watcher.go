@@ -11,9 +11,9 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/api/apps/v1beta1"
 	"k8s.io/api/apps/v1beta2"
+	appsv1 "k8s.io/api/apps/v1"
     extensionsV1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/pkg/apis/apps"
 	"strconv"
 )
 
@@ -23,10 +23,14 @@ func appsV1DeploymentWatcher(clientSet *kubernetes.Clientset,c client.Client,rcC
 			return clientSet.AppsV1().Deployments(namespace).Watch(v1.ListOptions{})
 		},
 		func(obj runtime.Object) string{
-			return obj.(*apps.Deployment).Name
+			return obj.(*appsv1.Deployment).Name
 		},
 		func(obj runtime.Object) string{
-			return toReadyString(obj.(*apps.Deployment).Spec.Replicas, obj.(*apps.Deployment).Status.AvailableReplicas)
+			rep := int32(0)
+			if obj.(*appsv1.Deployment).Spec.Replicas != nil {
+				rep = *obj.(*appsv1.Deployment).Spec.Replicas
+			}
+			return toReadyString(rep, obj.(*appsv1.Deployment).Status.AvailableReplicas)
 		})
 }
 
@@ -36,10 +40,14 @@ func appsV1StatefulSetWatcher(clientSet *kubernetes.Clientset,c client.Client,rc
 			return clientSet.AppsV1().StatefulSets(namespace).Watch(v1.ListOptions{})
 		},
 		func(obj runtime.Object) string{
-			return obj.(*apps.StatefulSet).Name
+			return obj.(*appsv1.StatefulSet).Name
 		},
 		func(obj runtime.Object) string{
-			return toReadyString(obj.(*apps.StatefulSet).Spec.Replicas, obj.(*apps.StatefulSet).Status.ReadyReplicas)
+			rep := int32(0)
+			if obj.(*appsv1.StatefulSet).Spec.Replicas != nil {
+				rep = *obj.(*appsv1.StatefulSet).Spec.Replicas
+			}
+			return toReadyString(rep, obj.(*appsv1.StatefulSet).Status.ReadyReplicas)
 		})
 }
 
@@ -49,10 +57,10 @@ func appsV1DaemonSetWatcher(clientSet *kubernetes.Clientset,c client.Client,rcCt
 			return clientSet.AppsV1().DaemonSets(namespace).Watch(v1.ListOptions{})
 		},
 		func(obj runtime.Object) string{
-			return obj.(*apps.DaemonSet).Name
+			return obj.(*appsv1.DaemonSet).Name
 		},
 		func(obj runtime.Object) string{
-			return toDaemonSetReadyString(obj.(*apps.DaemonSet).Status.DesiredNumberScheduled,obj.(*apps.DaemonSet).Status.CurrentNumberScheduled,obj.(*apps.DaemonSet).Status.NumberReady,obj.(*apps.DaemonSet).Status.UpdatedNumberScheduled,obj.(*apps.DaemonSet).Status.NumberAvailable)
+			return toDaemonSetReadyString(obj.(*appsv1.DaemonSet).Status.DesiredNumberScheduled,obj.(*appsv1.DaemonSet).Status.CurrentNumberScheduled,obj.(*appsv1.DaemonSet).Status.NumberReady,obj.(*appsv1.DaemonSet).Status.UpdatedNumberScheduled,obj.(*appsv1.DaemonSet).Status.NumberAvailable)
 		})
 }
 

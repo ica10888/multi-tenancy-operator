@@ -37,10 +37,10 @@ func podNameMatchesRC (kind,rcName,podName string) bool {
 func getPhase(obj *corev1.Pod) string {
 	csList := obj.Status.ContainerStatuses
 	if len(csList) > 0 {
-		if csList[0].LastTerminationState.Waiting.Reason != ""{
+		if csList[0].LastTerminationState.Waiting != nil && csList[0].LastTerminationState.Waiting.Reason != ""{
 			return csList[0].LastTerminationState.Waiting.Reason
 		}
-		if csList[0].LastTerminationState.Terminated.Reason != ""{
+		if csList[0].LastTerminationState.Terminated != nil && csList[0].LastTerminationState.Terminated.Reason != ""{
 			return csList[0].LastTerminationState.Terminated.Reason
 		}
 	}
