@@ -217,6 +217,7 @@ func watcherProcess(obj runtime.Object, namespace string, apiVersionRC ApiVersio
 					log.Error(err, "Get Controller failed")
 					return err
 				}
+				//TODO merge update status operators, update local status object many times , send PUT api-server once
 				if checkMTC.Status.UpdateNamespacedChartReplicationControllerStatusReady(namespace, rcName, apiVersionRC.ApiVersion, apiVersionRC.Kind, ready) {
 					err = c.Status().Update(context.TODO(), checkMTC)
 					if err != nil {

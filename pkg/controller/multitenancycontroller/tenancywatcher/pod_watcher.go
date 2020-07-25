@@ -56,6 +56,7 @@ func watcherPodProcess(obj *corev1.Pod, namespace string, c client.Client) (err 
 						return err
 					}
 					phase := getPhase(obj)
+					//TODO merge update status operators, update local status object many times , send PUT api-server once
 					if checkMTC.Status.ApplyNamespacedChartPodStatus(namespace,podName,phase) {
 						err = c.Status().Update(context.TODO(), checkMTC)
 						if err != nil {
