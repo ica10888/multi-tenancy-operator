@@ -30,9 +30,115 @@ spec:
           type: object
         spec:
           description: ControllerSpec defines the desired state of Controller
+          properties:
+            tenancies:
+              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+                Important: Run "operator-sdk generate k8s" to regenerate code after
+                modifying this file Add custom validation using kubebuilder tags:
+                https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
+              items:
+                properties:
+                  charts:
+                    items:
+                      properties:
+                        chartName:
+                          type: string
+                        releaseName:
+                          type: string
+                        settings:
+                          items:
+                            properties:
+                              key:
+                                type: string
+                              value:
+                                type: string
+                            required:
+                            - key
+                            - value
+                            type: object
+                          type: array
+                      required:
+                      - chartName
+                      - settings
+                      type: object
+                    type: array
+                  namespace:
+                    type: string
+                required:
+                - charts
+                - namespace
+                type: object
+              type: array
+          required:
+          - tenancies
           type: object
         status:
           description: ControllerStatus defines the observed state of Controller
+          properties:
+            updatedTenancies:
+              description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                of cluster Important: Run "operator-sdk generate k8s" to regenerate
+                code after modifying this file Add custom validation using kubebuilder
+                tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
+              items:
+                properties:
+                  chartMessages:
+                    items:
+                      properties:
+                        chartName:
+                          type: string
+                        errorMessage:
+                          type: string
+                        settingMap:
+                          additionalProperties:
+                            type: string
+                          type: object
+                      required:
+                      - chartName
+                      - settingMap
+                      type: object
+                    type: array
+                  namespace:
+                    type: string
+                  podStatus:
+                    items:
+                      properties:
+                        phase:
+                          type: string
+                        podName:
+                          type: string
+                      required:
+                      - phase
+                      - podName
+                      type: object
+                    type: array
+                  replicationControllerStatus:
+                    items:
+                      properties:
+                        apiVersion:
+                          type: string
+                        kind:
+                          type: string
+                        ready:
+                          type: string
+                        replicationControllerName:
+                          type: string
+                      required:
+                      - apiVersion
+                      - kind
+                      - ready
+                      - replicationControllerName
+                      type: object
+                    type: array
+                required:
+                - chartMessages
+                - namespace
+                - podStatus
+                - replicationControllerStatus
+                type: object
+              type: array
+          required:
+          - updatedTenancies
           type: object
       type: object
   version: v1alpha1
