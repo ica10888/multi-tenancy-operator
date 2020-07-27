@@ -31,32 +31,32 @@ spec:
 
 func TestDeserializer(t *testing.T) {
 	type args struct {
-		data string
+		data      string
 		namespace string
 	}
 	tests := []struct {
-		name     string
-		args     args
+		name    string
+		args    args
 		wantObj multitenancycontroller.Kubeapi
-		wantErr  bool
+		wantErr bool
 	}{
 		{
-			name: "single-namespaced-test",
-			args:     args{deployment,"dev"},
-			wantObj:  multitenancycontroller.Kubeapi{"extensions/v1beta1","Deployment","spring-example","dev"},
-			wantErr:  false,
+			name:    "single-namespaced-test",
+			args:    args{deployment, "dev"},
+			wantObj: multitenancycontroller.Kubeapi{"extensions/v1beta1", "Deployment", "spring-example", "dev"},
+			wantErr: false,
 		},
 		{
-			name: "error-type-test",
-			args:     args{strings.ReplaceAll(deployment,"name: spring-example","name: true"),""},
-			wantErr:  true,
+			name:    "error-type-test",
+			args:    args{strings.ReplaceAll(deployment, "name: spring-example", "name: true"), ""},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config := rest.Config{}
-			c,_ := client.New(&config,client.Options{})
-			gotObjs, err := Deserializer(c,tt.args.data,tt.args.namespace,false)
+			c, _ := client.New(&config, client.Options{})
+			gotObjs, err := Deserializer(c, tt.args.data, tt.args.namespace, false)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Deserializer() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -70,7 +70,7 @@ func TestDeserializer(t *testing.T) {
 
 func Test_immutableFieldSolver(t *testing.T) {
 	type args struct {
-		objJson  string
+		objJson       string
 		rvObjstruJson string
 	}
 	tests := []struct {
@@ -81,7 +81,7 @@ func Test_immutableFieldSolver(t *testing.T) {
 		{
 			"service-test",
 			args{
-				objJson: `{ "apiVersion": "v1", "kind": "Service", "metadata": { "name": "demo-service", "resourceVersion": "0" } }`,
+				objJson:       `{ "apiVersion": "v1", "kind": "Service", "metadata": { "name": "demo-service", "resourceVersion": "0" } }`,
 				rvObjstruJson: `{ "apiVersion": "v1", "kind": "Service", "metadata": { "name": "demo-service", "resourceVersion": "12345" }, "spec": { "clusterIP": "127.0.0.1" } }`,
 			},
 			"&{map[apiVersion:v1 kind:Service metadata:map[name:demo-service resourceVersion:0] spec:map[clusterIP:127.0.0.1]]}",
@@ -89,9 +89,9 @@ func Test_immutableFieldSolver(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj , _, _ := unstructured.UnstructuredJSONScheme.Decode([]byte(tt.args.objJson),nil, nil)
-			stru , _, _ := unstructured.UnstructuredJSONScheme.Decode([]byte(tt.args.rvObjstruJson),nil, nil)
-			immutableFieldSolver(obj.(*unstructured.Unstructured),stru.(*unstructured.Unstructured))
+			obj, _, _ := unstructured.UnstructuredJSONScheme.Decode([]byte(tt.args.objJson), nil, nil)
+			stru, _, _ := unstructured.UnstructuredJSONScheme.Decode([]byte(tt.args.rvObjstruJson), nil, nil)
+			immutableFieldSolver(obj.(*unstructured.Unstructured), stru.(*unstructured.Unstructured))
 			if fmt.Sprint(obj) != tt.want {
 				t.Errorf("Template() gotRes = %v, want %v", stru, tt.want)
 			}

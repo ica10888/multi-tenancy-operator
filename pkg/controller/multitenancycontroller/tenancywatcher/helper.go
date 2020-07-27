@@ -6,7 +6,7 @@ import (
 	"regexp"
 )
 
-func getRCKubeapi (objs []multitenancycontroller.KubeObject) (res []multitenancycontroller.Kubeapi){
+func getRCKubeapi(objs []multitenancycontroller.KubeObject) (res []multitenancycontroller.Kubeapi) {
 	for _, obj := range objs {
 		kind := obj.Kubeapi.Kind
 		if kind == "Deployment" || kind == "StatefulSet" || kind == "DaemonSet" {
@@ -16,7 +16,7 @@ func getRCKubeapi (objs []multitenancycontroller.KubeObject) (res []multitenancy
 	return
 }
 
-func podNameMatchesRC (kind,rcName,podName string) bool {
+func podNameMatchesRC(kind, rcName, podName string) bool {
 	switch kind {
 	case "Deployment":
 		p := rcName + "-[a-z0-9]{10}-[a-z0-9]{5}"
@@ -37,10 +37,10 @@ func podNameMatchesRC (kind,rcName,podName string) bool {
 func getPhase(obj *corev1.Pod) string {
 	csList := obj.Status.ContainerStatuses
 	if len(csList) > 0 {
-		if csList[0].LastTerminationState.Waiting != nil && csList[0].LastTerminationState.Waiting.Reason != ""{
+		if csList[0].LastTerminationState.Waiting != nil && csList[0].LastTerminationState.Waiting.Reason != "" {
 			return csList[0].LastTerminationState.Waiting.Reason
 		}
-		if csList[0].LastTerminationState.Terminated != nil && csList[0].LastTerminationState.Terminated.Reason != ""{
+		if csList[0].LastTerminationState.Terminated != nil && csList[0].LastTerminationState.Terminated.Reason != "" {
 			return csList[0].LastTerminationState.Terminated.Reason
 		}
 	}

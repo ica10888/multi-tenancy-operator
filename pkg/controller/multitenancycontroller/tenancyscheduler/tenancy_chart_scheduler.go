@@ -18,8 +18,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
-var log = logf.Log.WithName("tenancy_scheduler")
 
+var log = logf.Log.WithName("tenancy_scheduler")
 
 type ChartScheduler struct {
 	ChartHome string
@@ -27,7 +27,7 @@ type ChartScheduler struct {
 
 func ChartSchedulerFor() ChartScheduler {
 	chartHome := os.Getenv("CHART_HOME")
-	if chartHome == ""{
+	if chartHome == "" {
 		chartHome = "/root/chart"
 	}
 	return ChartScheduler{
@@ -35,58 +35,58 @@ func ChartSchedulerFor() ChartScheduler {
 	}
 }
 
-func (a ChartScheduler) CreateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
+func (a ChartScheduler) CreateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject, error) {
 	releaseName := t.NamespacedChart.Namespace
 	if t.NamespacedChart.ReleaseName != "" {
 		releaseName = t.NamespacedChart.ReleaseName
 	}
 
-	repo := path.Join(a.ChartHome,t.NamespacedChart.ChartName)
-	data,err :=helm.Template(repo,releaseName,"",false,SettingToStringValues(t.Settings))
+	repo := path.Join(a.ChartHome, t.NamespacedChart.ChartName)
+	data, err := helm.Template(repo, releaseName, "", false, SettingToStringValues(t.Settings))
 	if err != nil {
-		log.Error(err,"Helm Template Error")
-		return nil,err
+		log.Error(err, "Helm Template Error")
+		return nil, err
 	}
 
-	return applyOrUpdate(t,conversionCheckDataList(data))
+	return applyOrUpdate(t, conversionCheckDataList(data))
 }
 
-func (a ChartScheduler) UpdateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
+func (a ChartScheduler) UpdateSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject, error) {
 	releaseName := t.NamespacedChart.Namespace
 	if t.NamespacedChart.ReleaseName != "" {
 		releaseName = t.NamespacedChart.ReleaseName
 	}
 
-	repo := path.Join(a.ChartHome,t.NamespacedChart.ChartName)
-	data, err :=helm.Template(repo,releaseName,"",false,SettingToStringValues(t.Settings))
+	repo := path.Join(a.ChartHome, t.NamespacedChart.ChartName)
+	data, err := helm.Template(repo, releaseName, "", false, SettingToStringValues(t.Settings))
 	if err != nil {
-		log.Error(err,"Helm Template Error")
-		return nil,err
+		log.Error(err, "Helm Template Error")
+		return nil, err
 	}
-	staData, err :=helm.Template(repo,releaseName,"",false,SettingToStringValues(t.StateSettings))
+	staData, err := helm.Template(repo, releaseName, "", false, SettingToStringValues(t.StateSettings))
 	if err != nil {
-		log.Error(err,"Helm Template Error")
-		return nil,err
+		log.Error(err, "Helm Template Error")
+		return nil, err
 	}
 
 	checkDatas := conversionCheckDataList(data)
 	checkStateDatas := conversionCheckDataList(staData)
-	updateDatas := removeListIfNotChanged(checkDatas,checkStateDatas)
+	updateDatas := removeListIfNotChanged(checkDatas, checkStateDatas)
 
-	return applyOrUpdate(t,updateDatas)
+	return applyOrUpdate(t, updateDatas)
 }
 
-func (a ChartScheduler) DeleteSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject,error) {
+func (a ChartScheduler) DeleteSingleTenancyByConfigure(t *multitenancycontroller.TenancyExample) ([]multitenancycontroller.KubeObject, error) {
 	releaseName := t.NamespacedChart.Namespace
 	if t.NamespacedChart.ReleaseName != "" {
 		releaseName = t.NamespacedChart.ReleaseName
 	}
 
-	repo := path.Join(a.ChartHome,t.NamespacedChart.ChartName)
-	data, err :=helm.Template(repo,releaseName,"",false,SettingToStringValues(t.Settings))
+	repo := path.Join(a.ChartHome, t.NamespacedChart.ChartName)
+	data, err := helm.Template(repo, releaseName, "", false, SettingToStringValues(t.Settings))
 	if err != nil {
-		log.Error(err,"Helm Template Error")
-		return nil,err
+		log.Error(err, "Helm Template Error")
+		return nil, err
 	}
 	checkDatas := conversionCheckDataList(data)
 
@@ -94,28 +94,26 @@ func (a ChartScheduler) DeleteSingleTenancyByConfigure(t *multitenancycontroller
 	var succObjs []multitenancycontroller.KubeObject
 
 	for _, checkData := range checkDatas {
-		obj,err := Deserializer(t.Reconcile.Client,checkData,t.NamespacedChart.Namespace,false)
+		obj, err := Deserializer(t.Reconcile.Client, checkData, t.NamespacedChart.Namespace, false)
 		if err != nil {
 			errs = append(errs, err)
 			break
 		}
-		err = t.Reconcile.Client.Delete(context.TODO(),obj.Object)
+		err = t.Reconcile.Client.Delete(context.TODO(), obj.Object)
 		if err != nil {
 			errs = append(errs, err)
-			log.Error(err,fmt.Sprintf("%s %s %s failed in %s",obj.Kubeapi.Kind,obj.Kubeapi.Name,t.TenancyOperator.ToString(),t.NamespacedChart.Namespace))
+			log.Error(err, fmt.Sprintf("%s %s %s failed in %s", obj.Kubeapi.Kind, obj.Kubeapi.Name, t.TenancyOperator.ToString(), t.NamespacedChart.Namespace))
 		} else {
 			succObjs = append(succObjs, obj)
-			log.Info(fmt.Sprintf("%s %s %s success in %s",obj.Kubeapi.Kind,obj.Kubeapi.Name,t.TenancyOperator.ToString(),t.NamespacedChart.Namespace))
+			log.Info(fmt.Sprintf("%s %s %s success in %s", obj.Kubeapi.Kind, obj.Kubeapi.Name, t.TenancyOperator.ToString(), t.NamespacedChart.Namespace))
 		}
 	}
 	if len(errs) > 0 {
-		return succObjs,ErrorsFmt("Failed, reason: ",errs)
+		return succObjs, ErrorsFmt("Failed, reason: ", errs)
 	}
-	return succObjs,nil
+	return succObjs, nil
 
 }
-
-
 
 func applyOrUpdate(t *multitenancycontroller.TenancyExample, checkDatas []string) (objs []multitenancycontroller.KubeObject, err error) {
 
@@ -127,7 +125,7 @@ func applyOrUpdate(t *multitenancycontroller.TenancyExample, checkDatas []string
 
 		switch t.TenancyOperator {
 		case multitenancycontroller.CREATE:
-			obj,err = Deserializer(t.Reconcile.Client,checkData,t.NamespacedChart.Namespace,false)
+			obj, err = Deserializer(t.Reconcile.Client, checkData, t.NamespacedChart.Namespace, false)
 			if err != nil {
 				errs = append(errs, err)
 			} else {
@@ -135,7 +133,7 @@ func applyOrUpdate(t *multitenancycontroller.TenancyExample, checkDatas []string
 
 				//Create namespace if not exist
 				if apierrs.IsNotFound(err) {
-					ns := corev1.Namespace{TypeMeta:v1.TypeMeta{"Namespace","v1"},ObjectMeta: v1.ObjectMeta{Name: t.NamespacedChart.Namespace}}
+					ns := corev1.Namespace{TypeMeta: v1.TypeMeta{"Namespace", "v1"}, ObjectMeta: v1.ObjectMeta{Name: t.NamespacedChart.Namespace}}
 					err = t.Reconcile.Client.Create(context.TODO(), &ns)
 					if err != nil {
 						log.Info(fmt.Sprint(err))
@@ -149,14 +147,14 @@ func applyOrUpdate(t *multitenancycontroller.TenancyExample, checkDatas []string
 				if apierrs.IsAlreadyExists(err) {
 					log.Info("Is already exists, try to update")
 
-					obj, err = Deserializer(t.Reconcile.Client,checkData,t.NamespacedChart.Namespace,true)
-					if err == nil{
+					obj, err = Deserializer(t.Reconcile.Client, checkData, t.NamespacedChart.Namespace, true)
+					if err == nil {
 						err = t.Reconcile.Client.Update(context.TODO(), obj.Object)
 					}
 				}
 			}
 		case multitenancycontroller.UPDATE:
-			obj, err = Deserializer(t.Reconcile.Client,checkData,t.NamespacedChart.Namespace,true)
+			obj, err = Deserializer(t.Reconcile.Client, checkData, t.NamespacedChart.Namespace, true)
 			if err != nil {
 				errs = append(errs, err)
 			} else {
@@ -166,42 +164,39 @@ func applyOrUpdate(t *multitenancycontroller.TenancyExample, checkDatas []string
 
 		if err != nil {
 			errs = append(errs, err)
-			log.Error(err,fmt.Sprintf("%s %s %s failed in %s",obj.Kubeapi.Kind,obj.Kubeapi.Name,t.TenancyOperator.ToString(),t.NamespacedChart.Namespace))
+			log.Error(err, fmt.Sprintf("%s %s %s failed in %s", obj.Kubeapi.Kind, obj.Kubeapi.Name, t.TenancyOperator.ToString(), t.NamespacedChart.Namespace))
 		} else {
 			succObjs = append(succObjs, obj)
-			log.Info(fmt.Sprintf("%s %s %s success in %s",obj.Kubeapi.Kind,obj.Kubeapi.Name,t.TenancyOperator.ToString(),t.NamespacedChart.Namespace))
+			log.Info(fmt.Sprintf("%s %s %s success in %s", obj.Kubeapi.Kind, obj.Kubeapi.Name, t.TenancyOperator.ToString(), t.NamespacedChart.Namespace))
 		}
 	}
 	if len(errs) > 0 {
-		return succObjs,ErrorsFmt("Failed, reason: ",errs)
+		return succObjs, ErrorsFmt("Failed, reason: ", errs)
 	}
-	return succObjs,nil
+	return succObjs, nil
 }
 
+func Deserializer(c client.Client, data, namespace string, needResourceVersion bool) (multitenancycontroller.KubeObject, error) {
+	res, kapi, err := serializerWithNamespaceAndResourceVersionIfNeed(c, data, namespace, needResourceVersion)
+	if err != nil {
+		return multitenancycontroller.KubeObject{}, err
+	}
 
+	obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(res, nil, nil)
+	if err != nil {
+		return multitenancycontroller.KubeObject{}, err
+	}
 
-func Deserializer(c client.Client,data,namespace string, needResourceVersion bool) (multitenancycontroller.KubeObject, error) {
-	res, kapi, err := serializerWithNamespaceAndResourceVersionIfNeed(c,data,namespace,needResourceVersion)
-		if err != nil {
-			return multitenancycontroller.KubeObject{}, err
-		}
-
-		obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(res, nil, nil)
-		if err != nil {
-			return multitenancycontroller.KubeObject{}, err
-		}
-
-	return multitenancycontroller.KubeObject{kapi,obj},nil
+	return multitenancycontroller.KubeObject{kapi, obj}, nil
 }
 
-
-func serializerWithNamespaceAndResourceVersionIfNeed(c client.Client,s,namespace string, needResourceVersion bool)(res []byte ,kapi multitenancycontroller.Kubeapi ,err error){
-	json, err :=yaml.YAMLToJSON([]byte(s))
+func serializerWithNamespaceAndResourceVersionIfNeed(c client.Client, s, namespace string, needResourceVersion bool) (res []byte, kapi multitenancycontroller.Kubeapi, err error) {
+	json, err := yaml.YAMLToJSON([]byte(s))
 	if err != nil {
 		return
 	}
 
-	u, _, err := unstructured.UnstructuredJSONScheme.Decode(json,nil, nil)
+	u, _, err := unstructured.UnstructuredJSONScheme.Decode(json, nil, nil)
 	if err != nil {
 		return
 	}
@@ -218,15 +213,14 @@ func serializerWithNamespaceAndResourceVersionIfNeed(c client.Client,s,namespace
 	kapi.ApiVersion = stru.GetAPIVersion()
 
 	if needResourceVersion {
-		err = AddResourceVersionForUpdate(c,stru)
+		err = AddResourceVersionForUpdate(c, stru)
 	}
 
-
-	res ,err = stru.MarshalJSON()
+	res, err = stru.MarshalJSON()
 	return
 }
 
-func AddResourceVersionForUpdate(c client.Client,obj *unstructured.Unstructured) (err error){
+func AddResourceVersionForUpdate(c client.Client, obj *unstructured.Unstructured) (err error) {
 	rvObj := &unstructured.Unstructured{}
 
 	rvObj.SetAPIVersion(obj.GetAPIVersion())
@@ -234,42 +228,40 @@ func AddResourceVersionForUpdate(c client.Client,obj *unstructured.Unstructured)
 	rvObj.SetName(obj.GetName())
 	rvObj.SetNamespace(obj.GetNamespace())
 
-	err = c.Get(context.TODO(),types.NamespacedName{obj.GetNamespace(),obj.GetName()},rvObj)
+	err = c.Get(context.TODO(), types.NamespacedName{obj.GetNamespace(), obj.GetName()}, rvObj)
 
 	if err != nil {
-		log.Error(err,"Get before update error")
+		log.Error(err, "Get before update error")
 		return
 	}
 	buf := new(bytes.Buffer)
 
-	unstructured.UnstructuredJSONScheme.Encode(rvObj,buf)
+	unstructured.UnstructuredJSONScheme.Encode(rvObj, buf)
 
-	u, _, err := unstructured.UnstructuredJSONScheme.Decode(buf.Bytes(),nil, nil)
+	u, _, err := unstructured.UnstructuredJSONScheme.Decode(buf.Bytes(), nil, nil)
 	if err != nil {
-		log.Error(err,"Get before Get decode error")
+		log.Error(err, "Get before Get decode error")
 		return
 	}
-
 
 	rvObjstru := u.(*unstructured.Unstructured)
 	obj.SetResourceVersion(rvObjstru.GetResourceVersion())
 
-	immutableFieldSolver(obj,rvObjstru)
+	immutableFieldSolver(obj, rvObjstru)
 
 	return
 }
 
-
 //If error like this:
 //is invalid: spec.clusterIP: Invalid value: "": field is immutable
 //Here add case to solve
-func immutableFieldSolver(obj,rvObjstru *unstructured.Unstructured){
+func immutableFieldSolver(obj, rvObjstru *unstructured.Unstructured) {
 	switch obj.GetKind() {
 	case "Service":
-		val, found, err := unstructured.NestedString(rvObjstru.Object,"spec", "clusterIP")
+		val, found, err := unstructured.NestedString(rvObjstru.Object, "spec", "clusterIP")
 		if !found || err != nil {
 			val = ""
 		}
-		unstructured.SetNestedField(obj.Object,val,"spec", "clusterIP")
+		unstructured.SetNestedField(obj.Object, val, "spec", "clusterIP")
 	}
 }

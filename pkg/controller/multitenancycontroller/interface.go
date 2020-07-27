@@ -5,19 +5,19 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-type KubeObject struct{
+type KubeObject struct {
 	Kubeapi Kubeapi
-	Object runtime.Object
+	Object  runtime.Object
 }
 
 type Kubeapi struct {
 	ApiVersion string
 	Kind       string
-	Name   string
-	Namespace string
+	Name       string
+	Namespace  string
 }
 
-func (k *Kubeapi) CreateUnstructured() *unstructured.Unstructured{
+func (k *Kubeapi) CreateUnstructured() *unstructured.Unstructured {
 	u := new(unstructured.Unstructured)
 	u.SetAPIVersion(k.ApiVersion)
 	u.SetKind(k.Kind)
@@ -29,15 +29,15 @@ func (k *Kubeapi) CreateUnstructured() *unstructured.Unstructured{
 }
 
 type TenancyScheduler interface {
-	CreateSingleTenancyByConfigure(t *TenancyExample) (objs []KubeObject,err error)
-	UpdateSingleTenancyByConfigure(t *TenancyExample) (objs []KubeObject,err error)
-	DeleteSingleTenancyByConfigure(t *TenancyExample) (objs []KubeObject,err error)
+	CreateSingleTenancyByConfigure(t *TenancyExample) (objs []KubeObject, err error)
+	UpdateSingleTenancyByConfigure(t *TenancyExample) (objs []KubeObject, err error)
+	DeleteSingleTenancyByConfigure(t *TenancyExample) (objs []KubeObject, err error)
 }
 
 type TenancyWatcher interface {
 	InitTenancyWatcher(t *TenancyExample)
-	CreateTenancyPodStatusAndReplicationControllerStatus(objs []KubeObject,t *TenancyExample)
-	DeleteTenancyPodStatusAndReplicationControllerStatus(objs []KubeObject,t *TenancyExample)
+	CreateTenancyPodStatusAndReplicationControllerStatus(objs []KubeObject, t *TenancyExample)
+	DeleteTenancyPodStatusAndReplicationControllerStatus(objs []KubeObject, t *TenancyExample)
 	CreateTenancyNamespacesIfNeed(t *TenancyExample)
 	DeleteTenancyNamespacesIfNeed(t *TenancyExample)
 }

@@ -11,5 +11,5 @@ func init() {
 	AddToManagerFuncs = append(AddToManagerFuncs, multitenancycontroller.Add)
 
 	// Choose tenancy-scheduler constructor and tenancy-watcher constructor, like Plugins
-	multitenancycontroller.LoopSchedule(tenancyscheduler.ChartSchedulerFor(),tenancywatcher.ReplicationControllerWatcherFor())
+	multitenancycontroller.LoopSchedule(tenancyscheduler.ChartSchedulerFor(), tenancywatcher.ReplicationControllerWatcherFor())
 }

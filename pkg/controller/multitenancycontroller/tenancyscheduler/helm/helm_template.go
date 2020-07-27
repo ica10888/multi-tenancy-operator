@@ -11,7 +11,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 package helm
 
 import (
@@ -52,9 +51,6 @@ To render just one template in a chart, use '-x':
 	$ helm template mychart -x templates/deployment.yaml
 `
 
-
-
-
 type valueFiles []string
 
 type templateCmd struct {
@@ -62,9 +58,9 @@ type templateCmd struct {
 	valueFiles valueFiles
 	chartPath  string
 	//out              io.Writer
-	values           []string
-	stringValues     []string
-	fileValues       []string
+	values       []string
+	stringValues []string
+	fileValues   []string
 	//nameTemplate     string
 	showNotes        bool
 	releaseName      string
@@ -74,13 +70,10 @@ type templateCmd struct {
 	outputDir        string
 }
 
-
-
-
-func Template(repo string, releaseName string, outputDir string, showNotes bool,stringValues []string) (res string,err error) {
+func Template(repo string, releaseName string, outputDir string, showNotes bool, stringValues []string) (res string, err error) {
 	templateCmd := templateCmd{
 		"",
-		[]string{ path.Join(repo,"values.yaml") },
+		[]string{path.Join(repo, "values.yaml")},
 		repo,
 		[]string{},
 		stringValues,
@@ -97,27 +90,24 @@ func Template(repo string, releaseName string, outputDir string, showNotes bool,
 
 }
 
-
-
-
-func (t *templateCmd) Run( args []string) (res string,err error) {
+func (t *templateCmd) Run(args []string) (res string, err error) {
 	if len(args) < 1 {
-		return res,errors.New("chart is required")
+		return res, errors.New("chart is required")
 	}
 	// verify chart path exists
 	if _, err := os.Stat(args[0]); err == nil {
 		if t.chartPath, err = filepath.Abs(args[0]); err != nil {
-			return res,err
+			return res, err
 		}
 	} else {
-		return res,err
+		return res, err
 	}
 
 	// verify that output-dir exists if provided
 	if t.outputDir != "" {
 		_, err := os.Stat(t.outputDir)
 		if os.IsNotExist(err) {
-			return res,fmt.Errorf("output-dir '%s' does not exist", t.outputDir)
+			return res, fmt.Errorf("output-dir '%s' does not exist", t.outputDir)
 		}
 	}
 
@@ -127,16 +117,15 @@ func (t *templateCmd) Run( args []string) (res string,err error) {
 	// get combined values and create config
 	rawVals, err := vals(t.valueFiles, t.values, t.stringValues, t.fileValues, "", "", "")
 	if err != nil {
-		return res,err
+		return res, err
 	}
 
 	config := &chart.Config{Raw: string(rawVals), Values: map[string]*chart.Value{}}
 
-
 	// Check chart requirements to make sure all dependencies are present in /charts
 	c, err := chartutil.Load(t.chartPath)
 	if err != nil {
-		return res,err
+		return res, err
 	}
 
 	renderOpts := renderutil.Options{
@@ -152,7 +141,7 @@ func (t *templateCmd) Run( args []string) (res string,err error) {
 
 	renderedTemplates, err := renderutil.Render(c, config, renderOpts)
 	if err != nil {
-		return res,err
+		return res, err
 	}
 
 	listManifests := manifest.SplitManifests(renderedTemplates)
@@ -166,7 +155,7 @@ func (t *templateCmd) Run( args []string) (res string,err error) {
 			if !filepath.IsAbs(f) {
 				newF, err := filepath.Abs(filepath.Join(t.chartPath, f))
 				if err != nil {
-					return res,fmt.Errorf("could not turn template path %s into absolute path: %s", f, err)
+					return res, fmt.Errorf("could not turn template path %s into absolute path: %s", f, err)
 				}
 				f = newF
 			}
@@ -188,7 +177,7 @@ func (t *templateCmd) Run( args []string) (res string,err error) {
 				}
 			}
 			if missing {
-				return res,fmt.Errorf("could not find template %s in chart", f)
+				return res, fmt.Errorf("could not find template %s in chart", f)
 			}
 		}
 	} else {
@@ -213,7 +202,7 @@ func (t *templateCmd) Run( args []string) (res string,err error) {
 			}
 			err = writeToFile(t.outputDir, m.Name, data)
 			if err != nil {
-				return res,err
+				return res, err
 			}
 			continue
 		}
@@ -221,9 +210,7 @@ func (t *templateCmd) Run( args []string) (res string,err error) {
 		res += data
 	}
 
-
-
-	return res,nil
+	return res, nil
 }
 
 // write the <data> to <output-dir>/<name>
@@ -262,7 +249,6 @@ func ensureDirectoryForFile(file string) error {
 
 	return os.MkdirAll(baseDir, defaultDirectoryPermission)
 }
-
 
 // vals merges values from files specified via -f/--values and
 // directly via --set or --set-string or --set-file, marshaling them to YAML
@@ -320,17 +306,14 @@ func vals(valueFiles valueFiles, values []string, stringValues []string, fileVal
 	return yaml.Marshal(base)
 }
 
-
 //readFile load a file from the local directory or a remote file with a url.
 func readFile(filePath, CertFile, KeyFile, CAFile string) ([]byte, error) {
 	file, err := os.Open(filePath)
 	defer file.Close()
-	buffer := bytes.NewBuffer(make([] byte,0))
-	return buffer.Bytes() ,err
+	buffer := bytes.NewBuffer(make([]byte, 0))
+	return buffer.Bytes(), err
 
 }
-
-
 
 // Merges source and destination map, preferring values from the source map
 func mergeValues(dest map[string]interface{}, src map[string]interface{}) map[string]interface{} {

@@ -11,7 +11,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 package helm
 
 import (
@@ -45,7 +44,6 @@ type Commander interface {
 	CurrentEnv() map[string]string
 	SetEnvVariable(string, string)
 }
-
 
 // Command is a struct containing the details of an external command to be executed
 type Command struct {

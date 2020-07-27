@@ -29,7 +29,7 @@ var inited = false
 
 type TenancyOperator string
 
-func (t TenancyOperator) ToString() string{
+func (t TenancyOperator) ToString() string {
 	res := ""
 	switch t {
 	case UPDATE:
@@ -52,27 +52,24 @@ const (
 )
 
 type NamespacedChart struct {
-	Namespace string
-	ChartName string
+	Namespace   string
+	ChartName   string
 	ReleaseName string
 }
 
-
 type TenancyExample struct {
-	Reconcile *ReconcileMultiTenancyController
-	TenancyOperator TenancyOperator
-	NamespacedChart NamespacedChart
+	Reconcile            *ReconcileMultiTenancyController
+	TenancyOperator      TenancyOperator
+	NamespacedChart      NamespacedChart
 	NamespacedController types.NamespacedName
-	Namespaces []string
-	Settings map[string]string
-	StateSettings map[string]string
+	Namespaces           []string
+	Settings             map[string]string
+	StateSettings        map[string]string
 }
-
 
 var localSpec = []v1alpha1.Tenancy{}
 
 var TenancyQueue = make(chan TenancyExample)
-
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -86,7 +83,7 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 
-	return &ReconcileMultiTenancyController{Client: mgr.GetClient(), Scheme: mgr.GetScheme() ,Config: mgr.GetConfig()}
+	return &ReconcileMultiTenancyController{Client: mgr.GetClient(), Scheme: mgr.GetScheme(), Config: mgr.GetConfig()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -122,7 +119,6 @@ type ReconcileMultiTenancyController struct {
 	Config *rest.Config
 }
 
-
 // TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
@@ -130,24 +126,24 @@ type ReconcileMultiTenancyController struct {
 func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
-	defer func(){
+	defer func() {
 		if err := recover(); err != nil {
-			reqLogger.Error(fmt.Errorf("%s",err),"recover Err")
+			reqLogger.Error(fmt.Errorf("%s", err), "recover Err")
 		}
 	}()
 
 	// Fetch the multiTenancyController instance
-	checkMTC,err := CheckMultiTenancyController(r.Client,reqLogger)
+	checkMTC, err := CheckMultiTenancyController(r.Client, reqLogger)
 	if err != nil {
-		reqLogger.Error(err,"Check Err")
+		reqLogger.Error(err, "Check Err")
 		return reconcile.Result{}, err
 	}
 
 	if checkMTC.InitCheck() {
-		r.Client.Update(context.TODO(),checkMTC)
-		r.Client.Status().Update(context.TODO(),checkMTC)
+		r.Client.Update(context.TODO(), checkMTC)
+		r.Client.Status().Update(context.TODO(), checkMTC)
 		reqLogger.Info("Init check failed, init multiTenancyController")
-		return reconcile.Result{},nil
+		return reconcile.Result{}, nil
 	}
 
 	if !inited {
@@ -160,8 +156,8 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 		inited = true
 	}
 
-	if equalTenancies(checkMTC.Spec.Tenancies,localSpec) {
-		return reconcile.Result{},nil
+	if equalTenancies(checkMTC.Spec.Tenancies, localSpec) {
+		return reconcile.Result{}, nil
 	}
 	localSpec = checkMTC.Spec.Tenancies
 
@@ -177,10 +173,10 @@ func (r *ReconcileMultiTenancyController) Reconcile(request reconcile.Request) (
 }
 
 func addTenancyExampleList(checkMTC *v1alpha1.Controller, err error, r *ReconcileMultiTenancyController, reqLogger logr.Logger) ([]TenancyExample, reconcile.Result, error) {
-	defer func(){
+	defer func() {
 		Mutex.Unlock()
 		if err := recover(); err != nil {
-			reqLogger.Error(fmt.Errorf("%s",err),"recover Err")
+			reqLogger.Error(fmt.Errorf("%s", err), "recover Err")
 		}
 	}()
 	Mutex.Lock()
@@ -257,17 +253,17 @@ func addTenancyExampleList(checkMTC *v1alpha1.Controller, err error, r *Reconcil
 		}
 	}
 	err = r.Client.Status().Update(context.TODO(), mtC)
-	return teList, reconcile.Result{},err
+	return teList, reconcile.Result{}, err
 }
 
-func CheckMultiTenancyController(c client.Client, reqLogger logr.Logger) (*v1alpha1.Controller,error){
+func CheckMultiTenancyController(c client.Client, reqLogger logr.Logger) (*v1alpha1.Controller, error) {
 	mTCList := &v1alpha1.ControllerList{}
 	mTC := &v1alpha1.Controller{}
 
 	listOpts := []client.ListOption{
 		client.InNamespace(metav1.NamespaceAll),
 	}
-	err := c.List(context.TODO(),mTCList,listOpts...)
+	err := c.List(context.TODO(), mTCList, listOpts...)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			reqLogger.Info("multiTenancyController resource not found. Ignoring since object must be deleted")
@@ -280,20 +276,20 @@ func CheckMultiTenancyController(c client.Client, reqLogger logr.Logger) (*v1alp
 	//multiTenancyController can not exist more than one at same time
 	if len(mTCList.Items) >= 2 {
 		oldestController := &v1alpha1.Controller{}
-		var unixNano int64 =math.MinInt64
+		var unixNano int64 = math.MinInt64
 		for _, item := range mTCList.Items {
 			if item.ObjectMeta.CreationTimestamp.UnixNano() > unixNano {
 				oldestController = &item
 			} else {
-				c.Delete(context.TODO(),&item)
+				c.Delete(context.TODO(), &item)
 			}
 		}
-		err := fmt.Errorf("Controller can not exist more than one at same time, Controller is in %s namespace",oldestController.Namespace)
+		err := fmt.Errorf("Controller can not exist more than one at same time, Controller is in %s namespace", oldestController.Namespace)
 		reqLogger.Error(err, "Failed to create multiTenancyController")
 		return nil, err
 	}
 
 	mTC = &mTCList.Items[0]
 
-	return mTC,nil
+	return mTC, nil
 }
