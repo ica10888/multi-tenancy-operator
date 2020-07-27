@@ -15,6 +15,7 @@ rules:
   - events
   - configmaps
   - secrets
+  - namespaces
   verbs:
   - create
   - delete
@@ -23,12 +24,6 @@ rules:
   - patch
   - update
   - watch
-- apiGroups:
-    - v1
-  resources:
-    - namespaces
-  verbs:
-    - create
 - apiGroups:
   - apps
   resources:

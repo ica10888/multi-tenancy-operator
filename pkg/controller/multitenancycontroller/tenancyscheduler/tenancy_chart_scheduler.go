@@ -135,9 +135,10 @@ func applyOrUpdate(t *multitenancycontroller.TenancyExample, checkDatas []string
 
 				//Create namespace if not exist
 				if apierrs.IsNotFound(err) {
-					ns := corev1.Namespace{TypeMeta:v1.TypeMeta{"v1","Namespace"},ObjectMeta: v1.ObjectMeta{Name: t.NamespacedChart.Namespace}}
+					ns := corev1.Namespace{TypeMeta:v1.TypeMeta{"Namespace","v1"},ObjectMeta: v1.ObjectMeta{Name: t.NamespacedChart.Namespace}}
 					err = t.Reconcile.Client.Create(context.TODO(), &ns)
 					if err != nil {
+						log.Info(fmt.Sprint(err))
 						return succObjs, err
 					} else {
 						//Retry
