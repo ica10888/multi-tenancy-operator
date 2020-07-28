@@ -6,21 +6,14 @@ spec:
   tenancies:
     - namespace: foo
       charts:
-        - chartName: mysql
+        - chartName: deployment-example
           settings:
-            - key: image
-              value: mysql/mysql:v5.7.0
-            - key: spec.username
-              value: root
-            - key: spec.password
-              value: root
-        - chartName: kafka
+            - key: replicaCount
+              value: "2"
+        - chartName: statefulset-example
+          releaseName: nginx
           settings:
-            - key: kafka.image
-              value: kafka/kafka:v1.1
-    - namespace: bar
-      charts:
-        - chartName: kafka
-          settings:
-            - key: kafka.image
-              value: kafka/kafka:v2.0
+            - key: replicas
+              value: "3"
+            - key: service.internalPort
+              value: "8080"

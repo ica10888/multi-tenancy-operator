@@ -16,7 +16,7 @@ spec:
       containers:
         - name: multi-tenancy-operator
           # Replace this with the built image name
-          image: ica10888/multi-tenancy-operator:dev
+          image: ica10888/multi-tenancy-operator:v1.0.0
           command:
           - multi-tenancy-operator
           imagePullPolicy: IfNotPresent
@@ -33,3 +33,17 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "multi-tenancy-operator"
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 600Mi
+            requests:
+              cpu: 50m
+              memory: 500Mi
+          volumeMounts:
+          - name: chart
+            mountPath: /root/chart
+      volumes:
+        - name: chart
+          persistentVolumeClaim:
+            claimName: multi-tenancy

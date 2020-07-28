@@ -30,6 +30,36 @@ multi-tenancy-operator 是一个用于多租户管理的 kubernetes operator。�
 
 如果不使用 releaseName ，将会默认把 namespace 作为 releaseName 的参数。
 
+``` shell
+kubectl apply -n multi-tenancy -f  - <<EOF
+apiVersion: multitenancy.dev/v1alpha1
+kind: Controller
+metadata:
+  name: example-controller
+spec:
+  tenancies:
+    - namespace: foo
+      charts:
+        - chartName: deployment-example
+          settings:
+            - key: replicaCount
+              value: "2"
+        - chartName: statefulset-example
+          releaseName: nginx
+          settings:
+            - key: replicas
+              value: "3"
+            - key: service.internalPort
+              value: "8080"
+EOF
+```
+
+之后在对应的命令空间就会部署对应的 helm
+
+![](doc/kubectl-get-all-in-foo.png)
+
+![](doc/kubectl-get-controller.png)
+
 
 
 ### 基本原理

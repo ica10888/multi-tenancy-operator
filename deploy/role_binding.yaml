@@ -5,7 +5,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: multi-tenancy-operator
-  namespace: default
+  namespace: multi-tenancy
 roleRef:
   kind: ClusterRole
   name: multi-tenancy-operator
