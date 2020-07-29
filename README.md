@@ -13,13 +13,13 @@ multi-tenancy-operator 是一个用于多租户管理的 kubernetes operator。�
 可以通过以下命令将一个 example 部署在您的 kubernetes 集群中
 
 ```shell
-
+kubectl create namespace multi-tenancy && kubectl apply -n multi-tenancy -f  https://raw.githubusercontent.com/ica10888/multi-tenancy-operator/v1.0.0/doc/multi-tenancy-operator-example.yml
 ```
 
 如果需要配置自己的 helm 仓库，使用以下命令部署一个正式的 multi-tenancy-operator 在 kubernetes 集群中
 
 ``` shell
-
+kubectl create namespace multi-tenancy && kubectl apply -n multi-tenancy -f  https://raw.githubusercontent.com/ica10888/multi-tenancy-operator/v1.0.0/doc/multi-tenancy-operator-release.yml
 ```
 
 ### 如何使用
